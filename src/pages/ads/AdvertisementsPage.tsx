@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
+import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatCompact, formatCurrency, formatDate } from "@/lib/format"
 import type { Advertisement } from "@/types"
@@ -264,10 +265,10 @@ export default function AdvertisementsPage() {
               <Input value={form.mediaLabel} onChange={(e) => setForm((s) => ({ ...s, mediaLabel: e.target.value }))} placeholder="banner_advertiser.png" />
             </FormField>
             <FormField label="Start date">
-              <Input type="date" value={form.startDate} onChange={(e) => setForm((s) => ({ ...s, startDate: e.target.value }))} />
+              <DateInput value={form.startDate} onChange={(v) => setForm((s) => ({ ...s, startDate: v }))} />
             </FormField>
             <FormField label="End date">
-              <Input type="date" value={form.endDate} onChange={(e) => setForm((s) => ({ ...s, endDate: e.target.value }))} />
+              <DateInput value={form.endDate} onChange={(v) => setForm((s) => ({ ...s, endDate: v }))} />
             </FormField>
             <FormField label="Budget (₹)" className="sm:col-span-2">
               <Input

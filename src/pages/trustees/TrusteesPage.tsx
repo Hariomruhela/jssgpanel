@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
+import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatDate, initials } from "@/lib/format"
 import type { Trustee } from "@/types"
@@ -248,10 +249,10 @@ export default function TrusteesPage() {
               <Input value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
             </FormField>
             <FormField label="Tenure from">
-              <Input type="date" value={form.tenureFrom} onChange={(e) => setForm((s) => ({ ...s, tenureFrom: e.target.value }))} />
+              <DateInput value={form.tenureFrom} onChange={(v) => setForm((s) => ({ ...s, tenureFrom: v }))} />
             </FormField>
             <FormField label="Tenure to">
-              <Input type="date" value={form.tenureTo} onChange={(e) => setForm((s) => ({ ...s, tenureTo: e.target.value }))} />
+              <DateInput value={form.tenureTo} onChange={(v) => setForm((s) => ({ ...s, tenureTo: v }))} />
             </FormField>
             <FormField label="Status">
               <Select value={form.status} onValueChange={(v) => setForm((s) => ({ ...s, status: v as Trustee["status"] }))}>

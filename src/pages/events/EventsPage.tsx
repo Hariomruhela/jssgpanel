@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
+import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
 import { safePercent } from "@/lib/format"
@@ -231,7 +232,7 @@ export default function EventsPage() {
               </Select>
             </FormField>
             <FormField label="Date">
-              <Input type="date" value={form.date} onChange={(e) => setForm((s) => ({ ...s, date: e.target.value }))} />
+              <DateInput value={form.date} onChange={(v) => setForm((s) => ({ ...s, date: v }))} />
             </FormField>
             <FormField label="Time">
               <Input value={form.time} onChange={(e) => setForm((s) => ({ ...s, time: e.target.value }))} />

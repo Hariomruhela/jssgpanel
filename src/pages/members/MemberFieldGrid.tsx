@@ -2,6 +2,7 @@ import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { DateInput } from "@/components/DateInput"
 import type { FieldSection, MemberFormState } from "./memberFormFields"
 
 interface MemberFieldGridProps {
@@ -62,6 +63,20 @@ export function MemberFieldGrid({ sections, values, onChange, disabled = false }
                       placeholder={field.placeholder}
                       onChange={(e) => onChange(field.key, e.target.value)}
                     />
+                  </FormField>
+                )
+              }
+
+              if (field.type === "date") {
+                return (
+                  <FormField
+                    key={field.key}
+                    label={field.label}
+                    required={field.required}
+                    hint={field.hint}
+                    className={gridClass}
+                  >
+                    <DateInput value={value} disabled={disabled} onChange={(v) => onChange(field.key, v)} />
                   </FormField>
                 )
               }

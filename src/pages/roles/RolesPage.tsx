@@ -17,7 +17,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { cn } from "@/lib/utils"
-import { initials } from "@/lib/format"
+import { formatDate, formatDateTime, initials } from "@/lib/format"
 import type { AdminUser, PermissionKey, Role } from "@/types"
 import { getRoles, updateRolePermissions, getAdminUsers, createAdminUser, removeAdminUser } from "@/services/api/roles"
 
@@ -214,8 +214,8 @@ function AdminUsersTab({ roles, onChanged }: { roles: Role[]; onChanged: () => v
     },
     { id: "role", header: "Role", cell: (u) => <Badge variant="secondary">{roleMap[u.roleId] ?? u.roleId}</Badge> },
     { id: "status", header: "Status", cell: (u) => <StatusBadge status={u.status} /> },
-    { id: "last", header: "Last login", cell: (u) => u.lastLogin },
-    { id: "since", header: "Member since", cell: (u) => u.memberSince },
+    { id: "last", header: "Last login", cell: (u) => formatDateTime(u.lastLogin) },
+    { id: "since", header: "Member since", cell: (u) => formatDate(u.memberSince) },
     {
       id: "actions",
       header: "",

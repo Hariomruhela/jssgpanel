@@ -11,6 +11,7 @@ import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { FormField } from "@/components/FormField"
+import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatCompact, formatCurrency, formatDate } from "@/lib/format"
 import type { FeeConfig } from "@/types"
@@ -139,7 +140,7 @@ export default function FeesPage() {
               />
             </FormField>
             <FormField label="Due date">
-              <Input type="date" value={bulk.dueDate} onChange={(e) => setBulk((s) => ({ ...s, dueDate: e.target.value }))} />
+              <DateInput value={bulk.dueDate} onChange={(v) => setBulk((s) => ({ ...s, dueDate: v }))} />
             </FormField>
             <FormField label="Late fee (₹)">
               <Input
@@ -203,7 +204,7 @@ export default function FeesPage() {
               />
             </FormField>
             <FormField label="Due date">
-              <Input type="date" value={form.dueDate} onChange={(e) => setForm((s) => ({ ...s, dueDate: e.target.value }))} />
+              <DateInput value={form.dueDate} onChange={(v) => setForm((s) => ({ ...s, dueDate: v }))} />
             </FormField>
             <FormField label="Status">
               <Select value={form.status} onValueChange={(v) => setForm((s) => ({ ...s, status: v as FeeConfig["status"] }))}>

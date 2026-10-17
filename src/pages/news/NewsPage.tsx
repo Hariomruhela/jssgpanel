@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
+import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
 import type { Announcement } from "@/types"
@@ -214,7 +215,7 @@ export default function NewsPage() {
                 <Input value={form.author} onChange={(e) => setForm((s) => ({ ...s, author: e.target.value }))} />
               </FormField>
               <FormField label="Published on">
-                <Input type="date" value={form.publishedOn} onChange={(e) => setForm((s) => ({ ...s, publishedOn: e.target.value }))} />
+                <DateInput value={form.publishedOn} onChange={(v) => setForm((s) => ({ ...s, publishedOn: v }))} />
               </FormField>
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">

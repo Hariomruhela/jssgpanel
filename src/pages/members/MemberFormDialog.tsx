@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Copy, Link2, Loader2, Search, Trash2, UserPlus, X } from "lucide-react"
+import { Loader2, Trash2, X } from "lucide-react"
 import { ApiError } from "@/lib/apiClient"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -29,8 +29,8 @@ import {
   type MemberGroupOptions,
   type MemberLocationOptions,
 } from "@/services/api/members"
-import { createUser, getUsers } from "@/services/api/users"
-import type { MemberRecord, UserAccount } from "@/types"
+import { createUser } from "@/services/api/users"
+import type { MemberRecord } from "@/types"
 
 const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
 
@@ -134,11 +134,6 @@ export function MemberFormDialog({
   const [form, setForm] = useState<MemberFormState>(() =>
     editing ? memberToFormState(editing) : emptyMemberForm()
   )
-  const [linkedUser, setLinkedUser] = useState<UserAccount | null>(null)
-  const [matches, setMatches] = useState<UserAccount[]>([])
-  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [searching, setSearching] = useState(false)
-  const [creatingUser, setCreatingUser] = useState(false)
   const [saving, setSaving] = useState(false)
   const [photos, setPhotos] = useState<{ member?: File; spouse?: File }>({})
   const [previews, setPreviews] = useState<{ member?: string; spouse?: string }>({})
@@ -196,63 +191,6 @@ export function MemberFormDialog({
     }
   }
 
-  const searchAccounts = async () => {
-    const needle = [form.email, form.phone_number, form.contact_email, form.contact_phone, form.full_name]
-      .map((value) => value?.trim().toLowerCase() ?? "")
-      .filter(Boolean)
-    if (needle.length === 0) {
-      toast.error("Add an email or phone number first", {
-        description: "Those values are used to look up an existing account.",
-      })
-      return
-    }
-    setSearching(true)
-    try {
-      const users = await getUsers({ pageSize: 100 })
-      const found = users
-        .filter((user) =>
-          [user.email, user.phone_number, user.full_name].some((value) =>
-            needle.some((needleValue) => (value ?? "").toLowerCase().includes(needleValue))
-          )
-        )
-        .slice(0, 6)
-      setMatches(found)
-      if (found.length === 0) toast.info("No account matched those details — you can create one below.")
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not search accounts.")
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const provisionAccount = async () => {
-    const fullName = form.full_name.trim()
-    const email = (form.email || form.contact_email || "").trim()
-    if (!fullName || !email) {
-      toast.error("A full name and email are needed to create an account")
-      return
-    }
-    setCreatingUser(true)
-    const password = generatePassword()
-    try {
-      const user = await createUser({
-        email,
-        password,
-        full_name: fullName,
-        phone_number: (form.phone_number || form.contact_phone || "").trim() || null,
-        role_name: "MEMBER",
-      })
-      setLinkedUser(user)
-      setMatches([])
-      setGeneratedPassword(password)
-      toast.success("Member account created")
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create the account.")
-    } finally {
-      setCreatingUser(false)
-    }
-  }
-
   const uploadSelectedPhotos = async (memberId: string): Promise<string | null> => {
     const failures: string[] = []
     for (const slot of ["member", "spouse"] as const) {
@@ -279,12 +217,16 @@ export function MemberFormDialog({
       toast.error("Full name is required")
       return
     }
-    if (!isEditing && !form.phone_number.trim()) {
-      toast.error("Phone number is required")
-      return
+    if (!isEditing) {
+      if (!form.phone_number.trim()) {
+        toast.error("Phone number is required")
+        return
+      }
+      if (!form.email.trim()) {
+        toast.error("Email is required to create the member login")
+        return
+      }
     }
-    // Linking a login account is optional: the API accepts a member without a User,
-    // so an imported community member can be added without provisioning an account.
 
     setSaving(true)
     try {
@@ -294,13 +236,26 @@ export function MemberFormDialog({
         saved = { ...editing, ...updated }
         toast.success("Member updated successfully")
       } else {
-        saved = await createMember(toCreateInput(form, linkedUser?.id ?? null))
+        // Every member gets a login: a MEMBER account is created first, then the
+        // member record is linked to it.
+        const password = generatePassword()
+        const account = await createUser({
+          email: form.email.trim(),
+          password,
+          full_name: form.full_name.trim(),
+          phone_number: form.phone_number.trim() || null,
+          role_name: "MEMBER",
+        })
+        saved = await createMember(toCreateInput(form, account.id))
         // The API creates members as PENDING; approve straight away so a member
         // added from the panel never sits in the group list with a pending status.
         try {
           const approved = await setMemberStatus(saved.id, "APPROVED")
           saved = { ...saved, ...approved }
-          toast.success("Member created successfully")
+          toast.success("Member created with a MEMBER login", {
+            description: `Login: ${account.email} · Temporary password: ${password}`,
+            duration: 15000,
+          })
         } catch (approveError) {
           toast.warning("Member created, but it could not be approved automatically", {
             description:
@@ -337,7 +292,7 @@ export function MemberFormDialog({
           <DialogDescription>
             {isEditing
               ? "Edits the full member record and profile, including photos, in one save."
-              : "Creates the member record. Linking a login account is optional."}
+              : "Creates the member record together with a MEMBER login account."}
           </DialogDescription>
         </DialogHeader>
 
@@ -388,99 +343,6 @@ export function MemberFormDialog({
               </div>
             </CardContent>
           </Card>
-
-          {!isEditing && (
-            <Card size="sm">
-              <CardContent className="space-y-3 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Link2 className="size-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">Linked account (optional)</p>
-                  </div>
-                  {linkedUser && (
-                    <Button size="xs" variant="ghost" onClick={() => setLinkedUser(null)}>
-                      Change
-                    </Button>
-                  )}
-                </div>
-
-                {linkedUser ? (
-                  <div className="rounded-lg border px-3 py-2 text-sm">
-                    <p className="font-medium">{linkedUser.full_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[linkedUser.email, linkedUser.phone_number].filter(Boolean).join(" · ")}
-                    </p>
-                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">{linkedUser.id}</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      Optional. A community member can exist without a login — skip this and save.
-                    </p>
-                    <Button size="sm" variant="outline" onClick={searchAccounts} disabled={searching}>
-                      <Search />
-                      {searching ? "Searching…" : "Find account by this member's email / phone"}
-                    </Button>
-
-                    {matches.length > 0 && (
-                      <ul className="space-y-1">
-                        {matches.map((user) => (
-                          <li key={user.id}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLinkedUser(user)
-                                setMatches([])
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted"
-                            >
-                              <span>
-                                <span className="block font-medium">{user.full_name}</span>
-                                <span className="block text-xs text-muted-foreground">
-                                  {[user.email, user.phone_number, user.role?.name].filter(Boolean).join(" · ")}
-                                </span>
-                              </span>
-                              <span className="text-xs font-medium text-primary">Use this</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-3 border-t pt-3">
-                      <Button size="sm" variant="secondary" onClick={provisionAccount} disabled={creatingUser}>
-                        <UserPlus />
-                        {creatingUser ? "Creating…" : "No match? Create the account"}
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Creates a MEMBER login using the name and email above with a generated password.
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {generatedPassword && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2">
-                    <p className="text-xs">
-                      Temporary password — share it with the member:{" "}
-                      <span className="font-mono font-medium">{generatedPassword}</span>
-                    </p>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(generatedPassword)
-                        toast.success("Password copied")
-                      }}
-                    >
-                      <Copy />
-                      Copy
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="w-full flex-wrap justify-start">

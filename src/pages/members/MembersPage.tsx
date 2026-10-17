@@ -318,18 +318,37 @@ export default function MembersPage() {
         rowKey={(m) => m.id}
         searchKeys={(m) =>
           [
+            m.id,
+            m.membership_number,
             m.full_name,
             m.first_name,
             m.middle_name,
             m.last_name,
-            m.membership_number,
-            m.phone_number,
             m.email,
+            m.phone_number,
+            m.contact_phone,
+            m.contact_email,
+            m.spouse_name,
+            m.spouse_mobile,
+            m.group_id ? groupById[m.group_id] : null,
+            m.social_group_name,
+            m.city,
+            m.area,
+            m.address,
+            m.address_line,
+            m.business_address,
+            m.gender,
+            m.blood_group,
+            m.member_occupation,
+            m.company_name,
+            m.group_designation,
+            m.interest_fields,
+            m.family_member_count?.toString(),
           ]
             .filter(Boolean)
             .join(" ")
         }
-        searchPlaceholder={t("Search by full name…")}
+        searchPlaceholder={t("Search members…")}
         filters={filters}
         pageSize={PAGE_SIZE}
         currentPage={page}

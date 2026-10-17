@@ -246,9 +246,9 @@ export default function DashboardPage() {
               upcoming.data.map((e) => (
                 <div key={e.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
+                    <div className="flex h-9 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
                       <CalendarDays className="mb-0.5 size-3.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">{e.date.slice(5)}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatDate(e.date)}</span>
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{e.title}</p>

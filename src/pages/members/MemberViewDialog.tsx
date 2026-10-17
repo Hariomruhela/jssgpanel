@@ -59,8 +59,6 @@ function buildSections(member: MemberRecord): Section[] {
       fields: [
         { label: "Phone", value: member.phone_number, raw: true },
         { label: "Email", value: member.email, raw: true },
-        { label: "Contact phone", value: member.contact_phone, raw: true },
-        { label: "Contact email", value: member.contact_email, raw: true },
       ],
     },
     {

@@ -99,7 +99,7 @@ function DirectoryReport() {
             downloadCSV(
               "member-directory.csv",
               ["Reg No", "Name", "Gender", "Group", "City", "State", "Phone", "Email", "Joined", "Status"],
-              (data.data ?? []).map((r) => [r.regNo, r.name, r.gender, r.group, r.city, r.state, r.phone, r.email, r.joinedOn, r.status])
+              (data.data ?? []).map((r) => [r.regNo, r.name, r.gender, r.group, r.city, r.state, r.phone, r.email, formatDate(r.joinedOn), r.status])
             )
           }
         >

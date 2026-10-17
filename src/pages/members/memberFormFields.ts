@@ -5,13 +5,10 @@ export type MemberOptionSource = "groups" | "locations"
 export type MemberFieldKey =
   | "full_name"
   | "gender"
-  | "blood_group"
   | "member_dob"
   | "membership_number"
   | "phone_number"
   | "email"
-  | "contact_phone"
-  | "contact_email"
   | "profile_photo_url"
   | "member_photo_link"
   | "family_member_count"
@@ -59,7 +56,6 @@ export type MemberFieldKey =
   | "area"
   | "address_line"
   | "group_id"
-  | "location_id"
 
 export type FieldType = "text" | "email" | "tel" | "url" | "date" | "number" | "textarea" | "select"
 
@@ -82,7 +78,7 @@ export interface FieldSection<K extends string = MemberFieldKey> {
 }
 
 const GENDERS = ["Male", "Female", "Other"].map((value) => ({ label: value, value }))
-const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((value) => ({ label: value, value }))
+
 
 export const CREATE_SECTIONS: FieldSection[] = [
   {
@@ -91,7 +87,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
     fields: [
       { key: "full_name", label: "Full name", type: "text", required: true, full: true, placeholder: "e.g. Rahul Mehta" },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
-      { key: "blood_group", label: "Blood group", type: "select", options: BLOOD_GROUPS },
       { key: "member_dob", label: "Date of birth", type: "date" },
       { key: "membership_number", label: "Membership number", type: "text", placeholder: "e.g. JSSG-0042" },
     ],
@@ -102,8 +97,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
     fields: [
       { key: "phone_number", label: "Phone number", type: "tel", required: true, placeholder: "+919876543210" },
       { key: "email", label: "Email", type: "email", placeholder: "member@example.com" },
-      { key: "contact_phone", label: "Contact phone", type: "tel", placeholder: "+919876543210" },
-      { key: "contact_email", label: "Contact email", type: "email" },
     ],
   },
   {
@@ -166,7 +159,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "city", label: "City", type: "text" },
       { key: "area", label: "Area", type: "text" },
       { key: "group_id", label: "Social group", type: "select", optionsSource: "groups" },
-      { key: "location_id", label: "Location", type: "select", optionsSource: "locations" },
     ],
   },
 ]
