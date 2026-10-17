@@ -65,7 +65,6 @@ function buildSections(member: MemberRecord): Section[] {
       title: "Profile",
       fields: [
         { label: "Gender", value: member.gender },
-        { label: "Blood group", value: member.blood_group, raw: true },
         { label: "Date of birth", value: formatDate(member.member_dob ?? ""), raw: true },
         { label: "Education", value: member.member_education },
         { label: "Occupation", value: member.member_occupation },
@@ -137,7 +136,10 @@ function buildSections(member: MemberRecord): Section[] {
       title: "Record",
       fields: [
         { label: "Member ID", value: member.id, raw: true },
-        { label: "Status", value: member.membership_status },
+        { label: "Full name", value: member.full_name },
+        { label: "Phone", value: member.phone_number, raw: true },
+        { label: "Email", value: member.email, raw: true },
+        { label: "Group", value: member.social_group_name || "—" },
         { label: "Joined", value: formatDateTime(member.joined_at ?? member.created_at), raw: true },
         { label: "Approved", value: formatDateTime(member.approved_at ?? ""), raw: true },
         { label: "Created", value: formatDateTime(member.created_at), raw: true },
@@ -166,8 +168,7 @@ export function MemberViewDialog({ member, onOpenChange, onEdit }: MemberViewDia
                 <div className="space-y-1">
                   <DialogTitle>{h(member.full_name)}</DialogTitle>
                   <DialogDescription>
-                    {member.membership_number || t("No membership number")}
-                    {member.membership_status !== "PENDING" && ` · ${h(member.membership_status)}`}
+                    {member.membership_status !== "PENDING" && `${h(member.membership_status)}`}
                   </DialogDescription>
                 </div>
               </div>

@@ -6,7 +6,6 @@ export type MemberFieldKey =
   | "full_name"
   | "gender"
   | "member_dob"
-  | "membership_number"
   | "phone_number"
   | "email"
   | "profile_photo_url"
@@ -88,7 +87,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "full_name", label: "Full name", type: "text", required: true, full: true, placeholder: "e.g. Rahul Mehta" },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
       { key: "member_dob", label: "Date of birth", type: "date" },
-      { key: "membership_number", label: "Membership number", type: "text", placeholder: "e.g. JSSG-0042" },
     ],
   },
   {
