@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { PhotoCropDialog } from "@/components/PhotoCropDialog"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MemberFieldGrid } from "./MemberFieldGrid"
@@ -72,7 +73,10 @@ function PhotoPicker({ label, currentUrl, file, previewUrl, disabled, canRemove,
         className="sr-only"
         id={`photo-${label}`}
         disabled={disabled}
-        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          onPick(e.target.files?.[0] ?? null)
+          e.target.value = ""
+        }}
       />
       <Button asChild size="xs" variant="outline" disabled={disabled}>
         <label htmlFor={`photo-${label}`} className="cursor-pointer">
@@ -138,6 +142,7 @@ export function MemberFormDialog({
   const [saving, setSaving] = useState(false)
   const [photos, setPhotos] = useState<{ member?: File; spouse?: File }>({})
   const [previews, setPreviews] = useState<{ member?: string; spouse?: string }>({})
+  const [cropTarget, setCropTarget] = useState<{ slot: "member" | "spouse"; file: File } | null>(null)
   const [photoToRemove, setPhotoToRemove] = useState<"member" | "spouse" | null>(null)
   const [removingPhoto, setRemovingPhoto] = useState(false)
   const [tab, setTab] = useState(CREATE_SECTIONS[0].id)
@@ -221,7 +226,7 @@ export function MemberFormDialog({
   }
 
   const provisionAccount = async () => {
-    const fullName = form.full_name.trim() || [form.first_name, form.last_name].filter(Boolean).join(" ").trim()
+    const fullName = form.full_name.trim()
     const email = (form.email || form.contact_email || "").trim()
     if (!fullName || !email) {
       toast.error("A full name and email are needed to create an account")
@@ -366,7 +371,7 @@ export function MemberFormDialog({
                   disabled={!signedIn || saving}
                   canRemove={isEditing && !!(editing?.member_photo_link || editing?.profile_photo_url)}
                   removing={removingPhoto && photoToRemove === "member"}
-                  onPick={(file) => pickPhoto("member", file)}
+                  onPick={(file) => (file ? setCropTarget({ slot: "member", file }) : pickPhoto("member", null))}
                   onRemove={() => setPhotoToRemove("member")}
                 />
                 <PhotoPicker
@@ -377,7 +382,7 @@ export function MemberFormDialog({
                   disabled={!signedIn || saving}
                   canRemove={isEditing && !!editing?.spouse_photo_link}
                   removing={removingPhoto && photoToRemove === "spouse"}
-                  onPick={(file) => pickPhoto("spouse", file)}
+                  onPick={(file) => (file ? setCropTarget({ slot: "spouse", file }) : pickPhoto("spouse", null))}
                   onRemove={() => setPhotoToRemove("spouse")}
                 />
               </div>
@@ -511,6 +516,16 @@ export function MemberFormDialog({
           variant="destructive"
           loading={removingPhoto}
           onConfirm={confirmRemovePhoto}
+        />
+
+        <PhotoCropDialog
+          open={cropTarget !== null}
+          file={cropTarget?.file ?? null}
+          title={cropTarget?.slot === "spouse" ? "Crop spouse photo" : "Crop member photo"}
+          onOpenChange={(open) => !open && setCropTarget(null)}
+          onCropped={(cropped) => {
+            if (cropTarget) pickPhoto(cropTarget.slot, cropped)
+          }}
         />
       </DialogContent>
     </Dialog>

@@ -4,12 +4,8 @@ export type MemberOptionSource = "groups" | "locations"
 
 export type MemberFieldKey =
   | "full_name"
-  | "first_name"
-  | "middle_name"
-  | "last_name"
   | "gender"
   | "blood_group"
-  | "date_of_birth"
   | "member_dob"
   | "membership_number"
   | "phone_number"
@@ -26,14 +22,6 @@ export type MemberFieldKey =
   | "spouse_education"
   | "spouse_occupation"
   | "anniversary_date"
-  | "son_name"
-  | "son_dob"
-  | "son_education"
-  | "son_occupation"
-  | "daughter_name"
-  | "daughter_dob"
-  | "daughter_education"
-  | "daughter_occupation"
   | "unmarried_son1_details"
   | "unmarried_son1_dob"
   | "unmarried_son1_education"
@@ -102,13 +90,9 @@ export const CREATE_SECTIONS: FieldSection[] = [
     label: "Identity",
     fields: [
       { key: "full_name", label: "Full name", type: "text", required: true, full: true, placeholder: "e.g. Rahul Mehta" },
-      { key: "first_name", label: "First name", type: "text" },
-      { key: "middle_name", label: "Middle name", type: "text" },
-      { key: "last_name", label: "Last name", type: "text" },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
       { key: "blood_group", label: "Blood group", type: "select", options: BLOOD_GROUPS },
-      { key: "date_of_birth", label: "Date of birth", type: "date" },
-      { key: "member_dob", label: "Member DOB", type: "date", hint: "Legacy member date of birth" },
+      { key: "member_dob", label: "Date of birth", type: "date" },
       { key: "membership_number", label: "Membership number", type: "text", placeholder: "e.g. JSSG-0042" },
     ],
   },
@@ -120,8 +104,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "email", label: "Email", type: "email", placeholder: "member@example.com" },
       { key: "contact_phone", label: "Contact phone", type: "tel", placeholder: "+919876543210" },
       { key: "contact_email", label: "Contact email", type: "email" },
-      { key: "profile_photo_url", label: "Profile photo URL", type: "url", full: true, placeholder: "https://…" },
-      { key: "member_photo_link", label: "Member photo link", type: "url", full: true, placeholder: "https://…" },
     ],
   },
   {
@@ -135,15 +117,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "spouse_dob", label: "Spouse DOB", type: "date" },
       { key: "spouse_education", label: "Spouse education", type: "text" },
       { key: "spouse_occupation", label: "Spouse occupation", type: "text" },
-      { key: "spouse_photo_link", label: "Spouse photo link", type: "url" },
-      { key: "son_name", label: "Son name", type: "text" },
-      { key: "son_dob", label: "Son DOB", type: "date" },
-      { key: "son_education", label: "Son education", type: "text" },
-      { key: "son_occupation", label: "Son occupation", type: "text" },
-      { key: "daughter_name", label: "Daughter name", type: "text" },
-      { key: "daughter_dob", label: "Daughter DOB", type: "date" },
-      { key: "daughter_education", label: "Daughter education", type: "text" },
-      { key: "daughter_occupation", label: "Daughter occupation", type: "text" },
       { key: "unmarried_son1_details", label: "Unmarried son 1 details", type: "text" },
       { key: "unmarried_son1_dob", label: "Unmarried son 1 DOB", type: "date" },
       { key: "unmarried_son1_education", label: "Unmarried son 1 education", type: "text" },
@@ -198,6 +171,25 @@ export const CREATE_SECTIONS: FieldSection[] = [
   },
 ]
 
+/**
+ * Fields kept in the form state and payloads but never rendered: the photo URLs
+ * are managed by the photo uploader, not typed by hand.
+ */
+const HIDDEN_SECTIONS: FieldSection[] = [
+  {
+    id: "media",
+    label: "Media",
+    fields: [
+      { key: "profile_photo_url", label: "Profile photo URL", type: "url" },
+      { key: "member_photo_link", label: "Member photo link", type: "url" },
+      { key: "spouse_photo_link", label: "Spouse photo link", type: "url" },
+    ],
+  },
+]
+
+/** Every field the form carries: the rendered sections plus the hidden media fields. */
+const TRACKED_SECTIONS: FieldSection[] = [...CREATE_SECTIONS, ...HIDDEN_SECTIONS]
+
 export type MemberFormState = Record<MemberFieldKey, string>
 
 export interface MemberOption {
@@ -207,7 +199,7 @@ export interface MemberOption {
 
 export function emptyMemberForm(): MemberFormState {
   const state = {} as MemberFormState
-  for (const section of CREATE_SECTIONS) {
+  for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) state[field.key] = ""
   }
   return state
@@ -215,7 +207,7 @@ export function emptyMemberForm(): MemberFormState {
 
 export function memberToFormState(member: MemberRecord): MemberFormState {
   const state = emptyMemberForm()
-  for (const section of CREATE_SECTIONS) {
+  for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {
       const value = member[field.key]
       state[field.key] = value === null || value === undefined ? "" : String(value)
@@ -256,7 +248,7 @@ export function toCreateInput(state: MemberFormState, userId: string | null): Me
     user_id: userId,
   }
   const target = input as unknown as Record<string, string | null>
-  for (const section of CREATE_SECTIONS) {
+  for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {
       if (field.key === "full_name" || field.key === "phone_number") continue
       target[field.key] = toNullable(state, field.key)
@@ -271,7 +263,7 @@ export function toCreateInput(state: MemberFormState, userId: string | null): Me
 export function toPatchInput(state: MemberFormState): MemberPatchInput {
   const input: MemberPatchInput = {}
   const target = input as Record<string, string | null>
-  for (const section of CREATE_SECTIONS) {
+  for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {
       target[field.key] = toNullable(state, field.key)
     }

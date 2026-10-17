@@ -35,32 +35,32 @@ export default function DashboardPage() {
 
       <section>
         <h2 className="mb-4 text-[22px] font-bold text-[#680b0d] dark:text-[#f0c96e]">
-          त्वरित जानकारी
+          Quick Overview
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             icon={Users}
-            label="कुल सदस्य"
+            label="Total Members"
             value={stats.loading ? "—" : String(stats.data?.totalMembers ?? 0)}
           />
           <StatCard
             icon={UserGroup}
-            label="सोशल समूह"
+            label="Social Groups"
             value={stats.loading ? "—" : String(stats.data?.activeGroups ?? 0)}
           />
           <StatCard
             icon={User}
-            label="ट्रस्टी / पदाधिकारी"
+            label="Trustees / Officials"
             value={stats.loading ? "—" : String(stats.data?.pendingRegistrations ?? 0)}
           />
           <StatCard
             icon={MapPin}
-            label="कुल स्थान"
+            label="Total Locations"
             value={stats.loading ? "—" : String(stats.data?.totalLocations ?? 0)}
           />
           <StatCard
             icon={IndianRupee}
-            label="वार्षिक वसूली"
+            label="Annual Collection"
             value={stats.loading ? "—" : formatCompact(stats.data?.collectedThisYear ?? 0)}
           />
         </div>

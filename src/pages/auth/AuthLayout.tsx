@@ -1,6 +1,5 @@
 import { useLanguage } from "@/lib/language"
-import { ArrowLeft } from "lucide-react"
-import { Link, Outlet, useLocation } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 
 export default function AuthLayout() {
   const location = useLocation()
@@ -43,60 +42,15 @@ export default function AuthLayout() {
               </div>
             </div>
 
-            <div className="flex flex-1 items-center justify-center py-10">
-              <div className="w-full max-w-md space-y-6 text-center">
-                <div className="space-y-4">
-                  <p className="font-serif-display text-3xl leading-[1.08] tracking-tight text-white md:text-4xl">
-                    {t("Jain Social Group Federation")}
-                  </p>
-                  <p className="mx-auto max-w-md text-[15px] leading-relaxed text-[#e8dfbc]/90">
-                    {t(
-                      "A centralized platform to manage members, fee collection, events and community information."
-                    )}
-                  </p>
-                </div>
+            <div className="flex-1" />
 
-                <div className="space-y-3 text-sm text-[#d9c98d]/90">
-                  <div className="flex items-center justify-center gap-2.5">
-                    <div className="size-1.5 rounded-full bg-[#c5a84e]" />
-                    <span>{t("Secure, permission-based access")}</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2.5">
-                    <div className="size-1.5 rounded-full bg-[#c5a84e]" />
-                    <span>{t("Centralized member and group management")}</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2.5">
-                    <div className="size-1.5 rounded-full bg-[#c5a84e]" />
-                    <span>{t("Financial reports and collection tracking")}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-[#c9bd9a]/90">
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 transition-colors hover:bg-white/10"
-              >
-                <ArrowLeft className="size-3.5" />
-                {t("Go to dashboard")}
-              </Link>
+            <div className="flex items-center justify-end text-xs text-[#c9bd9a]/90">
               <p>© {new Date().getFullYear()} {t("JSSG Federation")}</p>
             </div>
           </div>
         </aside>
 
         <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-          <div className="absolute right-4 top-4 flex items-center gap-2 lg:hidden">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(150,120,55,0.3)] bg-[#fcfaf5]/80 px-2.5 py-1 text-xs text-[#174824] shadow-sm backdrop-blur transition-colors hover:bg-[#f3ecdb] dark:border-input dark:bg-background/80"
-            >
-              <ArrowLeft className="size-3.5" />
-              {t("Dashboard")}
-            </Link>
-          </div>
-
           <div className="w-full max-w-md space-y-6">
             <div className="space-y-2 text-center lg:text-left">
               <p className="font-serif-display text-2xl leading-tight tracking-tight text-[#174824] dark:text-[#d7e6cf] sm:text-3xl">

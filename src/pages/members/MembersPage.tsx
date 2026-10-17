@@ -7,7 +7,6 @@ import {
   KeyRound,
   Lock,
   LogIn,
-  LogOut,
   Pencil,
   Plus,
   RefreshCw,
@@ -39,7 +38,7 @@ function memberPhoto(member: MemberRecord): string | null {
 }
 
 export default function MembersPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const { t, h } = useLanguage()
   const [page, setPage] = useState(1)
   const [query, setQuery] = useState("")
@@ -257,17 +256,6 @@ export default function MembersPage() {
                 {user.full_name}
                 {user.role ? ` · ${user.role.name}` : ""}
               </Badge>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  signOut()
-                  toast.success(t("Signed out of the JSSG API"))
-                }}
-              >
-                <LogOut />
-                {t("Sign out")}
-              </Button>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
@@ -334,7 +322,7 @@ export default function MembersPage() {
             m.first_name,
             m.middle_name,
             m.last_name,
-            m.member_number,
+            m.membership_number,
             m.phone_number,
             m.email,
           ]
