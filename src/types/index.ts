@@ -619,6 +619,9 @@ export interface JainTirthRecord {
   /** Kept in the form; the current API does not return or store it. */
   tirth_date?: string | null
   location: string | null
+  state?: string | null
+  city?: string | null
+  website_url?: string | null
   cover_image_url: string | null
   /** `DRAFT`, `PUBLISHED`, `CANCELLED` or `COMPLETED`. */
   status: string
@@ -649,6 +652,9 @@ export interface JainTirthCreateInput {
   title: string
   description?: string | null
   location?: string | null
+  state?: string | null
+  city?: string | null
+  website_url?: string | null
   cover_image_url?: string | null
   status?: string
   is_public?: boolean

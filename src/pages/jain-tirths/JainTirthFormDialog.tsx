@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
@@ -38,11 +39,22 @@ interface JainTirthFormDialogProps {
   onSaved: () => void
 }
 
+const STATUS_OPTIONS = [
+  { label: "Published", value: "PUBLISHED" },
+  { label: "Draft", value: "DRAFT" },
+  { label: "Cancelled", value: "CANCELLED" },
+  { label: "Completed", value: "COMPLETED" },
+]
+
 interface FormState {
   title: string
   /** ISO `yyyy-mm-dd`; the API is sent `dd/mm/yyyy`. */
   tirthDate: string
+  status: string
   location: string
+  state: string
+  city: string
+  websiteUrl: string
   description: string
 }
 
@@ -61,7 +73,11 @@ function emptyForm(): FormState {
   return {
     title: "",
     tirthDate: todayIso(),
+    status: "DRAFT",
     location: "",
+    state: "",
+    city: "",
+    websiteUrl: "",
     description: "",
   }
 }
@@ -150,7 +166,11 @@ export function JainTirthFormDialog({
         setForm({
           title: detail.title,
           tirthDate: fromApiDate(detail.tirth_date) || fromApiDate(editing.tirth_date),
+          status: detail.status || editing.status || "DRAFT",
           location: detail.location ?? "",
+          state: detail.state ?? "",
+          city: detail.city ?? "",
+          websiteUrl: detail.website_url ?? "",
           description: detail.description ?? "",
         })
         setImages(
@@ -255,7 +275,11 @@ export function JainTirthFormDialog({
       // `tirth_date` is not part of the API's Jain Tirth model, so it is not sent.
       const payload = {
         title: form.title.trim(),
+        status: form.status,
         location: form.location.trim() || null,
+        state: form.state.trim() || null,
+        city: form.city.trim() || null,
+        website_url: form.websiteUrl.trim() || null,
         description: form.description.trim() || null,
       }
       const targetId = editing?.id ?? savedId
@@ -346,11 +370,51 @@ export function JainTirthFormDialog({
               <DateInput value={form.tirthDate} onChange={(v) => change("tirthDate", v)} />
             </FormField>
 
+            <FormField label="Status">
+              <Select value={form.status} onValueChange={(status) => change("status", status)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+
+            <FormField label="State">
+              <Input
+                value={form.state}
+                onChange={(e) => change("state", e.target.value)}
+                placeholder="e.g. Rajasthan"
+              />
+            </FormField>
+
+            <FormField label="City">
+              <Input
+                value={form.city}
+                onChange={(e) => change("city", e.target.value)}
+                placeholder="e.g. Chandangaon"
+              />
+            </FormField>
+
             <FormField label="Location">
               <Input
                 value={form.location}
                 onChange={(e) => change("location", e.target.value)}
                 placeholder="e.g. Chandangaon, Rajasthan"
+              />
+            </FormField>
+
+            <FormField label="Website URL">
+              <Input
+                type="url"
+                value={form.websiteUrl}
+                onChange={(e) => change("websiteUrl", e.target.value)}
+                placeholder="https://example.com"
               />
             </FormField>
 

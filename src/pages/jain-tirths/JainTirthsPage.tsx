@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
+import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { useData } from "@/lib/useData"
 import type { JainTirthRecord } from "@/types"
@@ -101,6 +102,11 @@ export default function JainTirthsPage() {
           <span className="truncate">{t.location || "—"}</span>
         </div>
       ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (t) => <StatusBadge status={t.status} />,
     },
     {
       id: "images",
