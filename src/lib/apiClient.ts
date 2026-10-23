@@ -4,6 +4,9 @@ import { translate } from "@/lib/language"
 const DEFAULT_BASE_URL = "https://jssgapi.vercel.app/api/v1"
 const TOKEN_STORAGE_KEY = "jssg-api-token"
 
+/** Fired once when the API rejects the current token (HTTP 401). */
+export const AUTH_UNAUTHORIZED_EVENT = "jssg:auth-unauthorized"
+
 const ENV_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
 
 export const API_BASE_URL = (ENV_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "")
@@ -98,17 +101,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    // Only an authenticated request whose token is still the current one can expire the
+    // session. Concurrent 401s share that token, so clearing it once makes the rest no-ops.
+    if (response.status === 401 && token && getStoredToken() === token) {
       setStoredToken(null)
       if (typeof window !== "undefined") {
-        try {
-          const current = window.location.pathname
-          if (current !== "/login") {
-            window.location.assign("/login")
-          }
-        } catch {
-          // ignore
-        }
+        window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
       }
     }
     const detail = extractMessage(payload, translate("Request failed ({status})", { status: response.status }))

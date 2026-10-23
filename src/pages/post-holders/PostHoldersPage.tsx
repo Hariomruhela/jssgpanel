@@ -30,17 +30,35 @@ import { getGroups } from "@/services/api/groups"
 const PAGE_SIZE = 20
 
 const DESIGNATIONS = [
-  { value: "President", label: "President" },
-  { value: "group_admin", label: "Group Admin" },
-  { value: "post_holder", label: "Post Holder" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "GROUP_ADMIN", label: "Group Admin" },
 ]
 
 const DESIGNATION_LABELS: Record<string, string> = Object.fromEntries(
   DESIGNATIONS.map((designation) => [designation.value, designation.label])
 )
 
+function matchDesignation(value: string | null | undefined): string | null {
+  const normalized = (value ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_")
+  if (normalized === "SUPER_ADMIN" || normalized === "SUPERADMIN") {
+    return "SUPER_ADMIN"
+  }
+  if (normalized === "GROUP_ADMIN" || normalized === "GROUPADMIN") {
+    return "GROUP_ADMIN"
+  }
+  return null
+}
+
+function canonicalDesignation(
+  value: string | null | undefined,
+  role?: string | null
+): string {
+  return matchDesignation(value) ?? matchDesignation(role) ?? "GROUP_ADMIN"
+}
+
 function designationLabel(value: string): string {
-  return DESIGNATION_LABELS[value] ?? value
+  const matched = matchDesignation(value)
+  return matched ? DESIGNATION_LABELS[matched] : value
 }
 
 /** Sentinel for the selects: an empty string is not a valid Radix select value. */
@@ -59,7 +77,7 @@ interface PostHolderForm {
 const DEFAULT_FORM: PostHolderForm = {
   firstName: "",
   lastName: "",
-  designation: "post_holder",
+  designation: "GROUP_ADMIN",
   groupId: "",
   memberId: "",
   phone: "",
@@ -162,9 +180,7 @@ export default function PostHoldersPage() {
 
   const openEdit = (trustee: MemberTrusteeRecord) => {
     const seat = seatByMember[seatKey(trustee.group_id, trustee.member_id)] ?? null
-    const designation = DESIGNATIONS.some((item) => item.value === trustee.designation)
-      ? trustee.designation
-      : "post_holder"
+    const designation = canonicalDesignation(trustee.designation, trustee.role)
     setForm({
       firstName: trustee.first_name ?? "",
       lastName: trustee.last_name ?? "",
@@ -183,8 +199,8 @@ export default function PostHoldersPage() {
       return
     }
     const member = (groupMembers.data?.members ?? []).find((m) => m.id === memberId)
-    const designation = DESIGNATIONS.some((item) => item.value === member?.group_designation)
-      ? member!.group_designation!
+    const designation = member
+      ? canonicalDesignation(member.group_designation, member.user?.role?.name)
       : null
     setForm((s) => ({
       ...s,
@@ -198,53 +214,59 @@ export default function PostHoldersPage() {
   }
 
   const save = async () => {
-    if (!form.firstName.trim() || !form.groupId) return
-    // A post holder without a member never reaches the trustee listing, so a
-    // new post holder has to be linked to one.
-    if (!dialog.editing && !form.memberId) {
-      toast.error("Pick the member of the group who holds this post.")
-      return
+    // An existing post holder exposes only the designation; every other field
+    // is read-only, so it must not block saving the one editable value.
+    if (!dialog.editing) {
+      if (!form.firstName.trim() || !form.groupId) return
+      // A post holder without a member never reaches the trustee listing, so a
+      // new post holder has to be linked to one.
+      if (!form.memberId) {
+        toast.error("Pick the member of the group who holds this post.")
+        return
+      }
     }
     setSaving(true)
-    const seatPayload = {
-      group_id: form.groupId,
-      first_name: form.firstName.trim(),
-      last_name: form.lastName.trim(),
-      designation: form.designation || "post_holder",
-      member_id: form.memberId || null,
-      contact_phone: form.phone.trim() || null,
-      contact_email: form.email.trim() || null,
-    }
+    const designation = form.designation || "GROUP_ADMIN"
     try {
-      // The seat holds the term and the post; the API mirrors the designation
-      // onto the member, so the listing follows.
-      if (dialog.seat) {
-        await updatePostHolder(dialog.seat.id, seatPayload)
-      } else {
-        await createPostHolder(seatPayload)
-      }
-      // The member carries the name and the contact the listing shows. The seat
-      // is already saved, so a failure here must not invite a duplicate retry.
-      if (form.memberId) {
-        try {
-          await updateMember(form.memberId, {
-            first_name: seatPayload.first_name,
-            last_name: seatPayload.last_name,
-            contact_phone: seatPayload.contact_phone,
-            contact_email: seatPayload.contact_email,
-          })
-        } catch (error) {
-          toast.warning("Post holder saved, but the member details were not updated", {
-            description:
-              (error instanceof ApiError ? (error.detail ?? error.message) : null) ?? undefined,
-          })
+      if (dialog.editing) {
+        // Only the designation is editable. The seat and the member stay in
+        // step because the API mirrors a seat's designation onto its member.
+        if (dialog.seat) {
+          await updatePostHolder(dialog.seat.id, { designation })
+        } else if (form.memberId) {
+          await updateMember(form.memberId, { group_designation: designation })
         }
+        toast.success(`${dialog.editing.full_name || "Post holder"} updated`)
+      } else {
+        const seatPayload = {
+          group_id: form.groupId,
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
+          designation,
+          member_id: form.memberId || null,
+          contact_phone: form.phone.trim() || null,
+          contact_email: form.email.trim() || null,
+        }
+        await createPostHolder(seatPayload)
+        // The member carries the name and the contact the listing shows. The seat
+        // is already saved, so a failure here must not invite a duplicate retry.
+        if (form.memberId) {
+          try {
+            await updateMember(form.memberId, {
+              first_name: seatPayload.first_name,
+              last_name: seatPayload.last_name,
+              contact_phone: seatPayload.contact_phone,
+              contact_email: seatPayload.contact_email,
+            })
+          } catch (error) {
+            toast.warning("Post holder saved, but the member details were not updated", {
+              description:
+                (error instanceof ApiError ? (error.detail ?? error.message) : null) ?? undefined,
+            })
+          }
+        }
+        toast.success(`${seatPayload.first_name} added`)
       }
-      toast.success(
-        dialog.editing
-          ? `${seatPayload.first_name} updated`
-          : `${seatPayload.first_name} added`
-      )
       setDialog({ open: false, editing: null, seat: null })
       refresh()
     } catch (error) {
@@ -398,7 +420,11 @@ export default function PostHoldersPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{dialog.editing ? "Edit Post Holder" : "Add Post Holder"}</DialogTitle>
-            <DialogDescription>Update the post holder directory information.</DialogDescription>
+            <DialogDescription>
+              {dialog.editing
+                ? "Only the designation can be changed."
+                : "Add a member to the post holder directory."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Social group" required>
@@ -407,7 +433,7 @@ export default function PostHoldersPage() {
                 onValueChange={(v) =>
                   setForm((s) => ({ ...s, groupId: v === NONE ? "" : v, memberId: "" }))
                 }
-                disabled={!!dialog.editing?.group_id}
+                disabled={!!dialog.editing}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select group" />
@@ -445,10 +471,20 @@ export default function PostHoldersPage() {
               </Select>
             </FormField>
             <FormField label="First name" required>
-              <Input value={form.firstName} onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))} placeholder="e.g. Rajesh" />
+              <Input
+                value={form.firstName}
+                onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
+                placeholder="e.g. Rajesh"
+                disabled={!!dialog.editing}
+              />
             </FormField>
             <FormField label="Last name">
-              <Input value={form.lastName} onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))} placeholder="e.g. Shah" />
+              <Input
+                value={form.lastName}
+                onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
+                placeholder="e.g. Shah"
+                disabled={!!dialog.editing}
+              />
             </FormField>
             <FormField label="Designation" required>
               <Select
@@ -468,10 +504,18 @@ export default function PostHoldersPage() {
               </Select>
             </FormField>
             <FormField label="Phone">
-              <Input value={form.phone} onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))} />
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+                disabled={!!dialog.editing}
+              />
             </FormField>
             <FormField label="Email">
-              <Input value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+              <Input
+                value={form.email}
+                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                disabled={!!dialog.editing}
+              />
             </FormField>
           </div>
           <DialogFooter>
@@ -480,7 +524,11 @@ export default function PostHoldersPage() {
             </Button>
             <Button
               onClick={save}
-              disabled={saving || !form.firstName.trim() || !form.groupId || (!dialog.editing && !form.memberId)}
+              disabled={
+                saving ||
+                (!dialog.editing &&
+                  (!form.firstName.trim() || !form.groupId || !form.memberId))
+              }
             >
               {saving ? "Saving…" : "Save"}
             </Button>

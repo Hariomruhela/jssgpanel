@@ -33,9 +33,11 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
+import { SearchableSelect } from "@/components/SearchableSelect"
 import { useData } from "@/lib/useData"
 import { initials } from "@/lib/format"
 import type { GroupInput, GroupRecord } from "@/types"
+import { getGeoStateCities, getGeoStates, type GeoCity } from "@/services/api/geo"
 import {
   addGroupMember,
   createGroup,
@@ -59,7 +61,7 @@ const DEFAULT_FORM: GroupInput = {
   name: "",
   name_hi: "",
   description: "",
-  contact_email: "",
+  contact_name: "",
   contact_phone: "",
   address: "",
   city: "",
@@ -128,6 +130,35 @@ function GroupsPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
+
+  const states = useData(useCallback(() => getGeoStates(), []))
+  const cities = useData(
+    useCallback(async () => {
+      const state = form.state?.trim()
+      if (!state) return { state: "", items: [] as GeoCity[] }
+      return { state, items: await getGeoStateCities(state) }
+    }, [form.state])
+  )
+
+  const stateOptions = useMemo(() => {
+    const options = (states.data ?? []).map((state) => state.name)
+    const current = form.state?.trim()
+    return current && !options.includes(current) ? [current, ...options] : options
+  }, [states.data, form.state])
+
+  const cityOptions = useMemo(() => {
+    const loaded = cities.data
+    const options =
+      loaded && loaded.state === form.state
+        ? [...new Set(loaded.items.map((city) => city.name))]
+        : []
+    const current = form.city?.trim()
+    return current && !options.includes(current) ? [current, ...options] : options
+  }, [cities.data, form.state, form.city])
+
+  const citiesLoading =
+    !!form.state?.trim() &&
+    (cities.loading || cities.data?.state !== form.state)
 
   const refresh = () => setVersion((v) => v + 1)
 
@@ -200,7 +231,7 @@ function GroupsPage() {
       name: group.name,
       name_hi: group.name_hi ?? "",
       description: group.description ?? "",
-      contact_email: group.contact_email ?? "",
+      contact_name: group.contact_name ?? "",
       contact_phone: group.contact_phone ?? "",
       address: group.address ?? "",
       city: group.city ?? "",
@@ -226,7 +257,7 @@ function GroupsPage() {
         name: form.name.trim(),
         name_hi: form.name_hi?.trim() || null,
         description: form.description?.trim() || null,
-        contact_email: form.contact_email?.trim() || null,
+        contact_name: form.contact_name?.trim() || null,
         contact_phone: form.contact_phone?.trim() || null,
         address: form.address?.trim() || null,
         city: form.city?.trim() || null,
@@ -276,7 +307,7 @@ function GroupsPage() {
       name: entry.name.trim(),
       name_hi: null,
       description: null,
-      contact_email: null,
+      contact_name: null,
       contact_phone: null,
       address: null,
       city: "",
@@ -364,8 +395,18 @@ function GroupsPage() {
     }
   }
 
-  const locationName = (id: string | null) =>
-    id ? (locations.data ?? []).find((l) => l.id === id)?.name ?? "—" : "—"
+  // The API stores city/state on the group itself; show them in the table. For
+  // older rows without those fields, fall back to the city/state of the linked
+  // location (and only then to the location name).
+  const groupLocation = (group: GroupRecord) => {
+    const direct = [group.city, group.state].filter(Boolean).join(", ")
+    if (direct) return direct
+    const location = group.location_id
+      ? (locations.data ?? []).find((item) => item.id === group.location_id)
+      : undefined
+    if (!location) return "—"
+    return [location.city, location.state].filter(Boolean).join(", ") || location.name || "—"
+  }
 
   const columns: Column<DirectoryGroup>[] = [
     {
@@ -408,31 +449,7 @@ function GroupsPage() {
     {
       id: "location",
       header: "Location",
-      cell: (row) => (row.group ? locationName(row.group.location_id) : "—"),
-    },
-    {
-      id: "contact",
-      header: "Contact",
-      cell: (row) =>
-        row.group
-          ? [row.group.contact_phone, row.group.contact_email].filter(Boolean).join(" · ") || "—"
-          : "—",
-    },
-    {
-      id: "admins",
-      header: "Admins",
-      cell: (row) => {
-        const admins = row.group?.admins ?? []
-        if (admins.length === 0) return "—"
-        const names = admins.map((admin) => admin.full_name)
-        const shown = names.slice(0, 2).join(", ")
-        return (
-          <span title={names.join(", ")}>
-            {shown}
-            {names.length > 2 ? ` +${names.length - 2}` : ""}
-          </span>
-        )
-      },
+      cell: (row) => (row.group ? groupLocation(row.group) : "—"),
     },
     {
       id: "status",
@@ -621,19 +638,18 @@ function GroupsPage() {
                 </SelectContent>
               </Select>
             </FormField>
+            <FormField label="Contact name">
+              <Input
+                value={form.contact_name ?? ""}
+                onChange={(e) => setForm((s) => ({ ...s, contact_name: e.target.value }))}
+                placeholder="e.g. Asha Shah"
+              />
+            </FormField>
             <FormField label="Contact phone">
               <Input
                 value={form.contact_phone ?? ""}
                 onChange={(e) => setForm((s) => ({ ...s, contact_phone: e.target.value }))}
                 placeholder="+919876543210"
-              />
-            </FormField>
-            <FormField label="Contact email">
-              <Input
-                type="email"
-                value={form.contact_email ?? ""}
-                onChange={(e) => setForm((s) => ({ ...s, contact_email: e.target.value }))}
-                placeholder="group@example.com"
               />
             </FormField>
             <FormField label="Group image" className="sm:col-span-2" hint="JPG, PNG, WebP or GIF — up to 10 MB.">
@@ -693,19 +709,56 @@ function GroupsPage() {
                 placeholder="What this group is about…"
               />
             </FormField>
-            <FormField label="City" required>
-              <Input
-                value={form.city ?? ""}
-                onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
-                placeholder="e.g. Mumbai"
-              />
-            </FormField>
             <FormField label="State" required>
-              <Input
+              <Select
                 value={form.state ?? ""}
-                onChange={(e) => setForm((s) => ({ ...s, state: e.target.value }))}
-                placeholder="e.g. Maharashtra"
+                onValueChange={(state) =>
+                  setForm((s) => ({ ...s, state, city: "" }))
+                }
+                disabled={states.loading && stateOptions.length === 0}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={states.loading ? "Loading states…" : "Select state"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {stateOptions.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {states.error && (
+                <p className="text-xs text-destructive">
+                  Could not load states: {states.error.message}
+                </p>
+              )}
+            </FormField>
+            <FormField label="City" required>
+              <SearchableSelect
+                options={cityOptions.map((city) => ({ value: city, label: city }))}
+                value={form.city ?? ""}
+                onChange={(city) => setForm((s) => ({ ...s, city }))}
+                placeholder={
+                  !form.state?.trim()
+                    ? "Select state first"
+                    : citiesLoading
+                      ? "Loading cities…"
+                      : cityOptions.length
+                        ? "Search and select a city…"
+                        : "No cities found"
+                }
+                searchPlaceholder="Type a city name…"
+                emptyText="No city matched."
+                disabled={!form.state?.trim() || citiesLoading || cityOptions.length === 0}
               />
+              {cities.error && form.state?.trim() && !citiesLoading && (
+                <p className="text-xs text-destructive">
+                  Could not load cities: {cities.error.message}
+                </p>
+              )}
             </FormField>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox

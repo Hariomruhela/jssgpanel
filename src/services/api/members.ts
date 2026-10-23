@@ -28,8 +28,14 @@ export interface MemberGroupOption {
   name: string
 }
 
+/** A location option also carries the city/state the backend stores on it. */
+export interface MemberLocationOption extends MemberGroupOption {
+  city: string
+  state: string
+}
+
 export type MemberGroupOptions = MemberGroupOption[]
-export type MemberLocationOptions = MemberGroupOption[]
+export type MemberLocationOptions = MemberLocationOption[]
 
 export interface MembershipCounts {
   pending: number
@@ -184,13 +190,15 @@ export async function getMemberGroups(): Promise<MemberGroupOptions> {
 export async function getMemberLocations(): Promise<MemberLocationOptions> {
   const payload = await apiRequest<ApiEnvelope<Record<string, unknown>[]>>("/locations?page_size=100", { auth: true })
   return unwrapList<Record<string, unknown>>(payload)
-    .map(toOption)
+    .map(toLocationOption)
     .filter((location) => location.id && location.name)
 }
 
-function toOption(record: Record<string, unknown>): MemberGroupOption {
+function toLocationOption(record: Record<string, unknown>): MemberLocationOption {
   return {
     id: String(record.id ?? ""),
     name: String(record.name ?? record.location_name ?? record.city ?? record.code ?? record.id ?? ""),
+    city: String(record.city ?? record.location_name ?? record.name ?? record.code ?? record.id ?? ""),
+    state: String(record.state ?? ""),
   }
 }

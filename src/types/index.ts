@@ -366,6 +366,7 @@ export interface MemberTrusteeRecord {
   first_name: string
   last_name: string
   full_name: string
+  role?: string | null
   designation: string
   contact_email: string | null
   contact_phone: string | null
@@ -429,6 +430,7 @@ export interface GroupRecord {
   name: string
   name_hi: string | null
   description: string | null
+  contact_name: string | null
   contact_email: string | null
   contact_phone: string | null
   address: string | null
@@ -448,6 +450,7 @@ export interface GroupInput {
   name: string
   name_hi?: string | null
   description?: string | null
+  contact_name?: string | null
   contact_email?: string | null
   contact_phone?: string | null
   address?: string | null

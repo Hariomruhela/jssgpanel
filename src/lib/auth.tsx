@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Navigate, useLocation } from "react-router-dom"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/apiClient"
 import { isAdminRole, signInAsAdmin, signOut as clearSession, getSignedInUser, getStoredUser, isSignedIn, adminOnlyAccessMessage } from "@/services/api/session"
 import type { UserAccount } from "@/types"
 
@@ -32,6 +33,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted.current = false
     }
+  }, [])
+
+  useEffect(() => {
+    // The API interceptor clears the token and emits this event; drop the cached user and
+    // let <RequireAdmin> route to /login with the router instead of a full page reload.
+    const handleUnauthorized = () => {
+      clearSession()
+      if (mounted.current) {
+        setUser(null)
+        setStatus("anonymous")
+      }
+    }
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized)
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized)
   }, [])
 
   useEffect(() => {
