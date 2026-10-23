@@ -1,101 +1,112 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { CalendarDays, MapPin, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarDays, Image as ImageIcon, MapPin, Pencil, Plus, Trash2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
-import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
-import { FormField } from "@/components/FormField"
-import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
-import { safePercent } from "@/lib/format"
-import type { CommunityEvent } from "@/types"
-import { createEvent, getEvents, removeEvent, updateEvent, type EventInput } from "@/services/api/events"
-import { getGroups } from "@/services/api/groups"
+import type { EventRecord } from "@/types"
+import { getEventCounts, getEventTypes, listEvents, removeEvent, endTimeOf } from "@/services/api/events"
+import { EventFormDialog } from "./EventFormDialog"
 
-const EVT_CATEGORIES = ["Religious", "Seva", "Cultural", "Educational", "Health", "Social", "Community Meet", "Environmental"]
-const EVT_STATUSES: CommunityEvent["status"][] = ["upcoming", "ongoing", "completed", "cancelled"]
+const PAGE_SIZE = 20
 
-const DEFAULT_FORM: EventInput = {
-  title: "",
-  category: "Community Meet",
-  date: new Date().toISOString().slice(0, 10),
-  time: "10:00 AM",
-  location: "",
-  city: "",
-  organizerId: "",
-  capacity: 100,
-  status: "upcoming",
-  description: "",
+/** The buckets the API sorts events into. */
+const TIME_FRAMES = [
+  { label: "Upcoming", value: "UPCOMING" },
+  { label: "Future", value: "FUTURE" },
+  { label: "Past", value: "PAST" },
+]
+
+/** The event's time span, e.g. `10:00 – 12:00`, or the start alone when it has no end. */
+function timeRange(event: EventRecord): string {
+  const start = event.event_time ?? ""
+  const end = endTimeOf(event)
+  if (!start) return end || "—"
+  return end ? `${start} – ${end}` : start
 }
 
 export default function EventsPage() {
-  const groups = useData(useCallback(() => getGroups(), []))
-  const events = useData(useCallback(() => getEvents(), []))
-  const groupMap = useMemo(() => Object.fromEntries((groups.data ?? []).map((g) => [g.id, g.name])), [groups.data])
+  const [page, setPage] = useState(1)
+  const [searchInput, setSearchInput] = useState("")
+  const [query, setQuery] = useState("")
+  const [eventType, setEventType] = useState("")
+  const [timeFrame, setTimeFrame] = useState("")
+  const [version, setVersion] = useState(0)
 
-  const [dialog, setDialog] = useState<{ open: boolean; editing: CommunityEvent | null }>({ open: false, editing: null })
-  const [deleting, setDeleting] = useState<CommunityEvent | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState<EventInput>(DEFAULT_FORM)
+  // The search box answers on every keystroke, so the request waits for a pause.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1)
+      setQuery(searchInput.trim())
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
-  const summary = useMemo(() => {
-    const all = events.data ?? []
-    const status = (s: CommunityEvent["status"]) => all.filter((e) => e.status === s).length
-    return { upcoming: status("upcoming"), ongoing: status("ongoing"), completed: status("completed") }
-  }, [events.data])
+  const list = useData(
+    useCallback(
+      () => listEvents({ page, pageSize: PAGE_SIZE, search: query, eventType, timeFrame }),
+      [page, query, eventType, timeFrame]
+    ),
+    version
+  )
+  const counts = useData(useCallback(() => getEventCounts(), []), version)
+  const types = useData(useCallback(() => getEventTypes(), []), version)
 
-  const openCreate = () => {
-    setForm(DEFAULT_FORM)
-    setDialog({ open: true, editing: null })
-  }
+  const [dialog, setDialog] = useState<{ open: boolean; editing: EventRecord | null }>({
+    open: false,
+    editing: null,
+  })
+  const [deleting, setDeleting] = useState<EventRecord | null>(null)
 
-  const openEdit = (e: CommunityEvent) => {
-    setForm({
-      title: e.title, category: e.category, date: e.date, time: e.time, location: e.location,
-      city: e.city, organizerId: e.organizerId, capacity: e.capacity, status: e.status, description: e.description,
-    })
-    setDialog({ open: true, editing: e })
-  }
+  const refresh = () => setVersion((v) => v + 1)
 
-  const save = async () => {
-    if (!form.title.trim() || !form.organizerId) return
-    setSaving(true)
-    try {
-      if (dialog.editing) {
-        await updateEvent(dialog.editing.id, form)
-        toast.success("Event updated")
-      } else {
-        await createEvent(form)
-        toast.success("Event created")
-      }
-      events.reload()
-      setDialog({ open: false, editing: null })
-    } finally {
-      setSaving(false)
-    }
-  }
+  const typeLabel = useMemo(() => {
+    const map = new Map((types.data ?? []).map((type) => [type.value, type.label]))
+    return (value: string, other: string | null) =>
+      other?.trim() ? other.trim() : map.get(value) ?? value
+  }, [types.data])
+
+  const openCreate = () => setDialog({ open: true, editing: null })
+  const openEdit = (event: EventRecord) => setDialog({ open: true, editing: event })
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeEvent(deleting.id)
-    toast.success("Event removed")
+    const event = deleting
+    setDeleting(null)
+    try {
+      await removeEvent(event.id)
+      toast.success("Event removed")
+      refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete the event.")
+    }
   }
 
-  const columns: Column<CommunityEvent>[] = [
+  const columns: Column<EventRecord>[] = [
     {
-      id: "title",
+      id: "event",
       header: "Event",
+      // The title is shown in full, so the cell wraps instead of holding one line.
+      className: "whitespace-normal",
       cell: (e) => (
-        <div className="max-w-72">
-          <p className="truncate font-medium">{e.title}</p>
-          <p className="truncate text-xs text-muted-foreground">{e.category} · {groupMap[e.organizerId] ?? e.organizerId}</p>
+        <div className="flex items-start gap-2.5">
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+            {e.cover_image_url ? (
+              <img src={e.cover_image_url} alt="" className="size-full object-cover" />
+            ) : (
+              <CalendarDays className="size-4 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 max-w-80 leading-tight">
+            <p className="break-words font-medium">{e.title}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {e.event_type ? typeLabel(e.event_type, e.event_type_other) : "—"}
+            </p>
+          </div>
         </div>
       ),
     },
@@ -104,34 +115,46 @@ export default function EventsPage() {
       header: "When",
       cell: (e) => (
         <div className="leading-tight">
-          <p>{formatDate(e.date)}</p>
-          <p className="text-xs text-muted-foreground">{e.time}</p>
+          <p>{e.event_date ?? (e.starts_at ? formatDate(e.starts_at) : "—")}</p>
+          <p className="text-xs text-muted-foreground">{timeRange(e)}</p>
         </div>
       ),
     },
     {
-      id: "where",
-      header: "Where",
+      id: "venue",
+      header: "Venue",
       cell: (e) => (
         <div className="flex max-w-56 items-center gap-1.5">
           <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{e.location}, {e.city}</span>
+          <span className="truncate">{e.venue_name || "—"}</span>
         </div>
       ),
     },
     {
-      id: "attendance",
-      header: "Attendance",
+      id: "host",
+      header: "Host",
       cell: (e) => (
-        <div>
-          <p>
-            {e.attendeeCount}/{e.capacity}
-          </p>
-          <p className="text-xs text-muted-foreground">{safePercent(e.attendeeCount, e.capacity)}% filled</p>
+        <div className="flex max-w-48 items-center gap-1.5">
+          <User className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate">{e.host_name || "—"}</p>
+            {e.host_contact_number && (
+              <p className="truncate text-xs text-muted-foreground">{e.host_contact_number}</p>
+            )}
+          </div>
         </div>
       ),
     },
-    { id: "status", header: "Status", cell: (e) => <StatusBadge status={e.status} /> },
+    {
+      id: "images",
+      header: "Images",
+      cell: (e) => (
+        <div className="flex items-center gap-1.5">
+          <ImageIcon className="size-3.5 text-muted-foreground" />
+          <span>{e.image_count ?? 0}</span>
+        </div>
+      ),
+    },
     {
       id: "actions",
       header: "",
@@ -142,7 +165,13 @@ export default function EventsPage() {
           <Button variant="ghost" size="icon-xs" onClick={() => openEdit(e)} aria-label="Edit">
             <Pencil />
           </Button>
-          <Button variant="ghost" size="icon-xs" className="text-destructive hover:text-destructive" onClick={() => setDeleting(e)} aria-label="Delete">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleting(e)}
+            aria-label="Delete"
+          >
             <Trash2 />
           </Button>
         </div>
@@ -163,128 +192,78 @@ export default function EventsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryMini icon={<CalendarDays className="size-4" />} label="Upcoming" value={events.data ? summary.upcoming : "…"} tone="text-sky-600 bg-sky-500/10" />
-        <SummaryMini icon={<CalendarDays className="size-4" />} label="Ongoing" value={events.data ? summary.ongoing : "…"} tone="text-amber-600 bg-amber-500/10" />
-        <SummaryMini icon={<CalendarDays className="size-4" />} label="Completed" value={events.data ? summary.completed : "…"} tone="text-emerald-600 bg-emerald-500/10" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <SummaryMini
+          icon={<CalendarDays className="size-4" />}
+          label="Total events"
+          value={counts.data ? counts.data.total : "…"}
+          tone="text-primary bg-primary/10"
+        />
+        <SummaryMini
+          icon={<CalendarDays className="size-4" />}
+          label="Upcoming"
+          value={counts.data ? counts.data.upcoming : "…"}
+          tone="text-sky-600 bg-sky-500/10"
+        />
+        <SummaryMini
+          icon={<CalendarDays className="size-4" />}
+          label="Future"
+          value={counts.data ? counts.data.future : "…"}
+          tone="text-amber-600 bg-amber-500/10"
+        />
+        <SummaryMini
+          icon={<CalendarDays className="size-4" />}
+          label="Past"
+          value={counts.data ? counts.data.past : "…"}
+          tone="text-emerald-600 bg-emerald-500/10"
+        />
       </div>
 
       <DataTable
         columns={columns}
-        data={events.data ?? []}
-        loading={events.loading}
+        data={list.data?.events ?? []}
+        loading={list.loading}
         rowKey={(e) => e.id}
-        searchKeys={(e) => `${e.title} ${e.category} ${e.location} ${e.city} ${groupMap[e.organizerId] ?? ""}`}
         searchPlaceholder="Search events…"
         filters={[
           {
-            key: "status",
-            label: "Status",
-            options: EVT_STATUSES.map((s) => ({ label: s, value: s })),
+            key: "eventType",
+            label: "Event type",
+            options: (types.data ?? []).map((type) => ({ label: type.label, value: type.value })),
           },
           {
-            key: "city",
-            label: "City",
-            options: [...new Set((events.data ?? []).map((e) => e.city))].map((c) => ({ label: c, value: c })),
+            key: "timeFrame",
+            label: "When",
+            options: TIME_FRAMES,
           },
         ]}
+        pageSize={PAGE_SIZE}
+        currentPage={page}
+        total={list.data?.total}
+        onPageChange={setPage}
+        onSearchChange={setSearchInput}
+        onFilterChange={(key, value) => {
+          setPage(1)
+          if (key === "eventType") setEventType(value === "all" ? "" : value)
+          if (key === "timeFrame") setTimeFrame(value === "all" ? "" : value)
+        }}
         emptyTitle="No events found"
-        emptyDescription="Try adjusting your search or filters."
-        pageSize={8}
+        emptyDescription="Try adjusting your search or filters, or add a new event."
       />
 
-      <Dialog open={dialog.open} onOpenChange={(open) => setDialog((s) => ({ ...s, open }))}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{dialog.editing ? "Edit Event" : "Add Event"}</DialogTitle>
-            <DialogDescription>Create or update a community event.</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="Event title" required className="sm:col-span-2">
-              <Input value={form.title} onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))} placeholder="e.g. Community Blood Donation Camp" />
-            </FormField>
-            <FormField label="Category">
-              <Select value={form.category} onValueChange={(v) => setForm((s) => ({ ...s, category: v }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVT_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="Status">
-              <Select value={form.status} onValueChange={(v) => setForm((s) => ({ ...s, status: v as CommunityEvent["status"] }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVT_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="Date">
-              <DateInput value={form.date} onChange={(v) => setForm((s) => ({ ...s, date: v }))} />
-            </FormField>
-            <FormField label="Time">
-              <Input value={form.time} onChange={(e) => setForm((s) => ({ ...s, time: e.target.value }))} />
-            </FormField>
-            <FormField label="Organising group" required>
-              <Select value={form.organizerId} onValueChange={(v) => setForm((s) => ({ ...s, organizerId: v }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select group" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(groups.data ?? []).map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="Capacity">
-              <Input
-                type="number"
-                min={1}
-                value={form.capacity}
-                onChange={(e) => setForm((s) => ({ ...s, capacity: Math.max(1, Number(e.target.value) || 1) }))}
-              />
-            </FormField>
-            <FormField label="Location" className="sm:col-span-2">
-              <Input value={form.location} onChange={(e) => setForm((s) => ({ ...s, location: e.target.value }))} placeholder="Venue name" />
-            </FormField>
-            <FormField label="City" className="sm:col-span-2">
-              <Input value={form.city} onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))} />
-            </FormField>
-            <FormField label="Description" className="sm:col-span-2">
-              <Textarea value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} rows={3} />
-            </FormField>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialog((s) => ({ ...s, open: false }))}>
-              Cancel
-            </Button>
-            <Button onClick={save} disabled={saving || !form.title.trim() || !form.organizerId}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EventFormDialog
+        open={dialog.open}
+        editing={dialog.editing}
+        eventTypes={types.data ?? []}
+        onOpenChange={(open) => setDialog((s) => ({ ...s, open }))}
+        onSaved={refresh}
+      />
 
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(open) => !open && setDeleting(null)}
         title="Delete event"
-        description={`Remove "${deleting?.title}"?`}
+        description={`Remove "${deleting?.title}"? Its cover image and gallery go with it.`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={confirmDelete}
@@ -293,14 +272,26 @@ export default function EventsPage() {
   )
 }
 
-function SummaryMini({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number | string; tone: string }) {
+function SummaryMini({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: number | string
+  tone: string
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <div className={`flex size-9 items-center justify-center rounded-lg ${tone}`}>{icon}</div>
-      <div>
-        <p className="text-xs text-muted-foreground">{label} events</p>
-        <p className="font-heading text-xl font-semibold">{value}</p>
-      </div>
-    </div>
+    <Card size="sm">
+      <CardContent className="flex items-center gap-3">
+        <div className={`flex size-9 items-center justify-center rounded-lg ${tone}`}>{icon}</div>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="font-heading text-xl font-semibold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

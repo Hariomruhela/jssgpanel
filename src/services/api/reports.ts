@@ -38,7 +38,7 @@ export interface GroupSummaryRow {
   city: string
   state: string
   members: number
-  trustees: number
+  postHolders: number
   events: number
   collectionRate: number
   membershipStatus: string
@@ -53,7 +53,7 @@ export async function getGroupSummary(): Promise<GroupSummaryRow[]> {
       city: g.city,
       state: g.state,
       members: g.memberCount,
-      trustees: db.trustees.filter((t) => t.groupId === g.id).length,
+      postHolders: db.postHolders.filter((t) => t.groupId === g.id).length,
       events: db.events.filter((e) => e.organizerId === g.id).length,
       collectionRate: db.feeConfigs.find((f) => f.groupId === g.id)?.collectionRate ?? 0,
       membershipStatus: g.status === "active" ? "Active" : "Inactive",

@@ -109,6 +109,21 @@ export async function removeMember(id: string): Promise<void> {
 }
 
 /**
+ * Clears the group designation of a member (`PATCH /members/{id}`).
+ *
+ * The designation is what makes a member a trustee, so clearing it takes the
+ * member out of the trustee listing. Used by the post holder page for a post
+ * holder that has no board seat of its own.
+ */
+export async function clearMemberDesignation(id: string): Promise<void> {
+  await apiRequest(`${BASE}/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: { group_designation: null },
+  })
+}
+
+/**
  * Upload or replace a photo slot (`member` or `spouse`). The bytes go to object
  * storage; the answer carries the stored URL and the refreshed member record.
  */

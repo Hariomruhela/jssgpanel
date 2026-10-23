@@ -96,7 +96,7 @@ function RoleCard({ role, selected, onSelect }: { role: Role; selected: boolean;
 const MODULES: { module: string; perms: [PermissionKey, string][] }[] = [
   { module: "Members", perms: [["members.view", "View member records"], ["members.manage", "Create & edit members"]] },
   { module: "Registrations", perms: [["registrations.approve", "Approve / reject registrations"]] },
-  { module: "Trustees", perms: [["trustees.manage", "Manage office bearers"]] },
+  { module: "Post Holders", perms: [["postHolders.manage", "Manage post holders"]] },
   { module: "Groups", perms: [["groups.manage", "Create & edit social groups"]] },
   { module: "Locations", perms: [["locations.manage", "Manage city locations"]] },
   { module: "Community", perms: [["community.manage", "Manage community info"]] },

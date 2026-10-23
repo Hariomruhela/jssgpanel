@@ -50,7 +50,7 @@ export default function DashboardPage() {
           />
           <StatCard
             icon={User}
-            label="Trustees / Officials"
+            label="Post Holders / Officials"
             value={stats.loading ? "—" : String(stats.data?.pendingRegistrations ?? 0)}
           />
           <StatCard

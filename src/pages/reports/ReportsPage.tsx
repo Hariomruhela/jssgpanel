@@ -48,7 +48,7 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <ReportCardLink icon={<FileText className="size-4" />} title="Member Directory" description="All registered members with contact details" target="directory" />
-        <ReportCardLink icon={<Landmark className="size-4" />} title="Group Summary" description="Members, trustees and activity per group" target="groups" />
+        <ReportCardLink icon={<Landmark className="size-4" />} title="Group Summary" description="Members, post holders and activity per group" target="groups" />
         <ReportCardLink icon={<ReceiptText className="size-4" />} title="Outstanding Fees" description="Fee collection status across all groups" target="fees" />
       </div>
 
@@ -128,7 +128,7 @@ function GroupSummaryReport() {
     },
     { id: "city", header: "Location", cell: (r) => `${r.city}, ${r.state}` },
     { id: "members", header: "Members", cell: (r) => r.members },
-    { id: "trustees", header: "Trustees", cell: (r) => r.trustees },
+    { id: "postHolders", header: "Post holders", cell: (r) => r.postHolders },
     { id: "events", header: "Events", cell: (r) => r.events },
     {
       id: "collection",
@@ -153,8 +153,8 @@ function GroupSummaryReport() {
           onClick={() =>
             downloadCSV(
               "group-summary.csv",
-              ["Code", "Group", "City", "State", "Members", "Trustees", "Events", "Collection %", "Status"],
-              (data.data ?? []).map((r) => [r.code, r.name, r.city, r.state, r.members, r.trustees, r.events, r.collectionRate, r.membershipStatus])
+              ["Code", "Group", "City", "State", "Members", "Post Holders", "Events", "Collection %", "Status"],
+              (data.data ?? []).map((r) => [r.code, r.name, r.city, r.state, r.members, r.postHolders, r.events, r.collectionRate, r.membershipStatus])
             )
           }
         >

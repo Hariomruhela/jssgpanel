@@ -304,7 +304,11 @@ export interface Registration {
   notes?: string
 }
 
-export interface Trustee {
+/**
+ * A mock post holder, used by the mock database only. The panel reads the
+ * real post holders from `GET /api/v1/trustees/board` (`TrusteeRecord`).
+ */
+export interface MockPostHolder {
   id: string
   name: string
   designation:
@@ -313,7 +317,7 @@ export interface Trustee {
     | "Secretary"
     | "Joint Secretary"
     | "Treasurer"
-    | "Trustee Member"
+    | "Post Holder"
   groupId: string
   city: string
   phone: string
@@ -322,6 +326,79 @@ export interface Trustee {
   tenureTo: string
   status: "active" | "inactive"
 }
+
+/**
+ * A board seat of the `trustees` table, exactly as `GET /api/v1/trustees/board`
+ * returns it (`TrusteeOut`).
+ *
+ * A seat is the post holder the panel manages: who holds which office, in
+ * which social group and for which term.
+ */
+export interface TrusteeRecord {
+  id: string
+  user_id: string | null
+  member_id: string | null
+  group_id: string | null
+  first_name: string
+  last_name: string
+  designation: string
+  contact_email: string | null
+  contact_phone: string | null
+  profile_photo_url: string | null
+  term_start: string | null
+  term_end: string | null
+  is_active: boolean
+  is_current: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * A trustee of the directory, exactly as `GET /api/v1/trustees` returns it
+ * (`MemberTrusteeOut`): the member whose group designation is filled in.
+ */
+export interface MemberTrusteeRecord {
+  id: string
+  member_id: string
+  group_id: string | null
+  group_name: string | null
+  first_name: string
+  last_name: string
+  full_name: string
+  designation: string
+  contact_email: string | null
+  contact_phone: string | null
+  profile_photo_url: string | null
+  city: string | null
+  membership_status: string
+  membership_number: string | null
+  joined_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Payload for `POST /api/v1/trustees`. */
+export interface TrusteeCreateInput {
+  group_id: string
+  first_name: string
+  last_name: string
+  designation: string
+  /** The member this seat belongs to; the API mirrors the designation onto them. */
+  member_id?: string | null
+  user_id?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  profile_photo_url?: string | null
+  term_start?: string | null
+  term_end?: string | null
+  is_active?: boolean
+  is_current?: boolean
+  sort_order?: number
+}
+
+/** Payload for `PATCH /api/v1/trustees/{id}`: every field is optional. */
+export type TrusteeUpdateInput = Partial<TrusteeCreateInput>
 
 export interface SocialGroup {
   id: string
@@ -355,6 +432,8 @@ export interface GroupRecord {
   contact_email: string | null
   contact_phone: string | null
   address: string | null
+  city: string | null
+  state: string | null
   logo_url: string | null
   status: string
   is_active: boolean
@@ -372,6 +451,8 @@ export interface GroupInput {
   contact_email?: string | null
   contact_phone?: string | null
   address?: string | null
+  city?: string | null
+  state?: string | null
   logo_url?: string | null
   status?: string
   is_active?: boolean
@@ -429,6 +510,153 @@ export interface CommunityEvent {
   description: string
 }
 
+/**
+ * An event as the API returns it (`GET /events` row, `EventOut`).
+ *
+ * The date and the time are wall-clock values the way a person writes them
+ * down: `event_date` is `dd/mm/yyyy` and `event_time` is a 24-hour `HH:MM`.
+ * `time_frame` says where the event sits relative to now and is recomputed by
+ * the API on every read, so it is never stale.
+ */
+export interface EventRecord {
+  id: string
+  title: string
+  title_hi: string | null
+  description: string | null
+  event_date: string | null
+  event_time: string | null
+  starts_at: string
+  ends_at: string | null
+  venue_name: string | null
+  venue_address: string | null
+  cover_image_url: string | null
+  /** `ANNUAL`, `FUNDRAISER`, … or `OTHER` (which carries `event_type_other`). */
+  event_type: string
+  event_type_other: string | null
+  host_id: string | null
+  host_name: string | null
+  host_contact_number: string | null
+  /** `PAST`, `UPCOMING` (within 7 days) or `FUTURE`. */
+  time_frame: string | null
+  /** `DRAFT`, `PUBLISHED`, `CANCELLED` or `COMPLETED`. */
+  status: string
+  is_public: boolean
+  max_attendees: number | null
+  registration_required: boolean
+  group_id: string | null
+  location_id: string | null
+  /** How many gallery images the event holds. */
+  image_count: number
+  created_at: string
+  updated_at: string
+}
+
+/** One image in an event's gallery. */
+export interface EventImageRecord {
+  id: string
+  event_id: string
+  url: string
+  position: number
+  created_at: string
+}
+
+/** An event together with its gallery (`GET /events/{id}`). */
+export interface EventDetail extends EventRecord {
+  images: EventImageRecord[]
+}
+
+/** One option of the event-type select (`GET /events/event-types`). */
+export interface EventTypeOption {
+  value: string
+  label: string
+}
+
+/** Payload for `POST /events`. */
+export interface EventCreateInput {
+  title: string
+  /** `dd/mm/yyyy`. */
+  event_date: string
+  /** 24-hour `HH:MM`. */
+  event_time: string
+  venue_name?: string | null
+  description?: string | null
+  event_type: string
+  /** Required when `event_type` is `OTHER`. */
+  event_type_other?: string | null
+  host_name?: string | null
+  host_contact_number?: string | null
+  group_id?: string | null
+  /**
+   * The instant the date and time refer to. The current API derives it from
+   * the date and the time and ignores this; an older one only knows the
+   * instant, so it is sent along.
+   */
+  starts_at?: string | null
+  /**
+   * The instant the event ends, the same way `starts_at` is sent. The API
+   * keeps it as it is given; an event without an end leaves it out.
+   */
+  ends_at?: string | null
+}
+
+/** Payload for `PATCH /events/{id}` — every field optional, only what is sent changes. */
+export type EventPatchInput = Partial<EventCreateInput>
+
+/**
+ * A Jain Tirth as the API returns it (`GET /api/v1/jain-tirths` row).
+ *
+ * The date is kept in the panel's form only; the current API does not store
+ * it, so it is optional on the record.
+ */
+export interface JainTirthRecord {
+  id: string
+  title: string
+  title_hi?: string | null
+  description: string | null
+  /** Kept in the form; the current API does not return or store it. */
+  tirth_date?: string | null
+  location: string | null
+  cover_image_url: string | null
+  /** `DRAFT`, `PUBLISHED`, `CANCELLED` or `COMPLETED`. */
+  status: string
+  is_public: boolean
+  group_id: string | null
+  /** How many gallery images the Jain Tirth holds. */
+  image_count?: number
+  created_at: string
+  updated_at: string
+}
+
+/** One image in a Jain Tirth's gallery. */
+export interface JainTirthImageRecord {
+  id: string
+  jain_tirth_id?: string
+  url: string
+  position: number
+  created_at: string
+}
+
+/** A Jain Tirth together with its gallery (`GET /jain-tirths/{id}`). */
+export interface JainTirthDetail extends JainTirthRecord {
+  images: JainTirthImageRecord[]
+}
+
+/** Payload for `POST /api/v1/jain-tirths`. */
+export interface JainTirthCreateInput {
+  title: string
+  description?: string | null
+  location?: string | null
+  cover_image_url?: string | null
+  status?: string
+  is_public?: boolean
+  /** Kept in the form; the current API ignores it. */
+  tirth_date?: string | null
+  group_id?: string | null
+}
+
+/** Payload for `PATCH /jain-tirths/{id}` — every field optional, only what is sent changes. */
+export type JainTirthPatchInput = Partial<JainTirthCreateInput>
+
 export interface Announcement {
   id: string
   title: string
@@ -476,7 +704,7 @@ export type PermissionKey =
   | "members.view"
   | "members.manage"
   | "registrations.approve"
-  | "trustees.manage"
+  | "postHolders.manage"
   | "groups.manage"
   | "locations.manage"
   | "community.manage"

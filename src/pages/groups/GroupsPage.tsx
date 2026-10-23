@@ -62,6 +62,8 @@ const DEFAULT_FORM: GroupInput = {
   contact_email: "",
   contact_phone: "",
   address: "",
+  city: "",
+  state: "",
   logo_url: "",
   status: "ACTIVE",
   is_active: true,
@@ -201,6 +203,8 @@ function GroupsPage() {
       contact_email: group.contact_email ?? "",
       contact_phone: group.contact_phone ?? "",
       address: group.address ?? "",
+      city: group.city ?? "",
+      state: group.state ?? "",
       logo_url: group.logo_url ?? "",
       status: group.status || "ACTIVE",
       is_active: group.is_active,
@@ -211,6 +215,10 @@ function GroupsPage() {
 
   const save = async () => {
     if (!form.name.trim()) return
+    if (!form.city?.trim() || !form.state?.trim()) {
+      toast.error("City and state are required.")
+      return
+    }
     setSaving(true)
     try {
       const payload: GroupInput = {
@@ -221,6 +229,8 @@ function GroupsPage() {
         contact_email: form.contact_email?.trim() || null,
         contact_phone: form.contact_phone?.trim() || null,
         address: form.address?.trim() || null,
+        city: form.city?.trim() || null,
+        state: form.state?.trim() || null,
         logo_url: form.logo_url?.trim() || null,
         location_id: form.location_id?.trim() || null,
       }
@@ -269,6 +279,8 @@ function GroupsPage() {
       contact_email: null,
       contact_phone: null,
       address: null,
+      city: "",
+      state: "",
       logo_url: null,
       status: "ACTIVE",
       is_active: true,
@@ -681,12 +693,18 @@ function GroupsPage() {
                 placeholder="What this group is about…"
               />
             </FormField>
-            <FormField label="Address" className="sm:col-span-2">
-              <Textarea
-                value={form.address ?? ""}
-                onChange={(e) => setForm((s) => ({ ...s, address: e.target.value }))}
-                rows={2}
-                placeholder="Registered address…"
+            <FormField label="City" required>
+              <Input
+                value={form.city ?? ""}
+                onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
+                placeholder="e.g. Mumbai"
+              />
+            </FormField>
+            <FormField label="State" required>
+              <Input
+                value={form.state ?? ""}
+                onChange={(e) => setForm((s) => ({ ...s, state: e.target.value }))}
+                placeholder="e.g. Maharashtra"
               />
             </FormField>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -703,7 +721,10 @@ function GroupsPage() {
             <Button variant="outline" onClick={() => setDialog((s) => ({ ...s, open: false }))}>
               Cancel
             </Button>
-            <Button onClick={save} disabled={saving || !form.name.trim()}>
+            <Button
+              onClick={save}
+              disabled={saving || !form.name.trim() || !form.city?.trim() || !form.state?.trim()}
+            >
               {saving ? <Loader2 className="animate-spin" /> : null}
               {saving ? "Saving…" : "Save"}
             </Button>

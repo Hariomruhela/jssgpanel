@@ -1,5 +1,6 @@
 import { useLanguage } from "@/lib/language"
-import { Outlet, useLocation } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
+import { Link, Outlet, useLocation } from "react-router-dom"
 
 export default function AuthLayout() {
   const location = useLocation()
@@ -42,19 +43,34 @@ export default function AuthLayout() {
               </div>
             </div>
 
-            <div className="flex-1" />
-
-            <div className="flex items-center justify-end text-xs text-[#c9bd9a]/90">
+            <div className="mt-auto flex items-center justify-between text-xs text-[#c9bd9a]/90">
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 transition-colors hover:bg-white/10"
+              >
+                <ArrowLeft className="size-3.5" />
+                {t("Go to dashboard")}
+              </Link>
               <p>© {new Date().getFullYear()} {t("JSSG Federation")}</p>
             </div>
           </div>
         </aside>
 
         <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+          <div className="absolute right-4 top-4 flex items-center gap-2 lg:hidden">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(150,120,55,0.3)] bg-[#fcfaf5]/80 px-2.5 py-1 text-xs text-[#174824] shadow-sm backdrop-blur transition-colors hover:bg-[#f3ecdb] dark:border-input dark:bg-background/80"
+            >
+              <ArrowLeft className="size-3.5" />
+              {t("Dashboard")}
+            </Link>
+          </div>
+
           <div className="w-full max-w-md space-y-6">
             <div className="space-y-2 text-center lg:text-left">
               <p className="font-serif-display text-2xl leading-tight tracking-tight text-[#174824] dark:text-[#d7e6cf] sm:text-3xl">
-                {isLogin ? t("Welcome back") : t("Create a new account")}
+                {isLogin ? t("Welcome Admin") : t("Create a new account")}
               </p>
               <p className="text-sm text-muted-foreground">
                 {isLogin

@@ -11,11 +11,12 @@ const SignupPage = lazy(() => import("@/pages/auth/SignupPage"))
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"))
 const MembersPage = lazy(() => import("@/pages/members/MembersPage"))
 const RegistrationsPage = lazy(() => import("@/pages/registrations/RegistrationsPage"))
-const TrusteesPage = lazy(() => import("@/pages/trustees/TrusteesPage"))
+const PostHoldersPage = lazy(() => import("@/pages/post-holders/PostHoldersPage"))
 const GroupsPage = lazy(() => import("@/pages/groups/GroupsPage"))
 const LocationsPage = lazy(() => import("@/pages/locations/LocationsPage"))
 const CommunityInfoPage = lazy(() => import("@/pages/community/CommunityInfoPage"))
 const EventsPage = lazy(() => import("@/pages/events/EventsPage"))
+const JainTirthsPage = lazy(() => import("@/pages/jain-tirths/JainTirthsPage"))
 const NewsPage = lazy(() => import("@/pages/news/NewsPage"))
 const NotificationsPage = lazy(() => import("@/pages/notifications/NotificationsPage"))
 const AdvertisementsPage = lazy(() => import("@/pages/ads/AdvertisementsPage"))
@@ -30,11 +31,12 @@ const ADMIN_PAGES: Record<string, React.ComponentType> = {
   dashboard: DashboardPage,
   members: MembersPage,
   registrations: RegistrationsPage,
-  trustees: TrusteesPage,
+  "post-holders": PostHoldersPage,
   groups: GroupsPage,
   locations: LocationsPage,
   community: CommunityInfoPage,
   events: EventsPage,
+  "jain-tirths": JainTirthsPage,
   news: NewsPage,
   notifications: NotificationsPage,
   advertisements: AdvertisementsPage,
@@ -117,6 +119,10 @@ export default function App() {
           {Object.keys(ADMIN_PAGES).map((path) => (
             <Route key={path} path={`/${path}`} element={<Navigate to={`/admin/${path}`} replace />} />
           ))}
+
+          {/* the post holders used to be called trustees */}
+          <Route path="/trustees" element={<Navigate to="/admin/post-holders" replace />} />
+          <Route path="/admin/trustees" element={<Navigate to="/admin/post-holders" replace />} />
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>

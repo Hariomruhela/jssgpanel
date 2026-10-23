@@ -7,13 +7,13 @@ import type {
   CommunityInfo,
   FeeConfig,
   Member,
+  MockPostHolder,
   Notification,
   PaymentTransaction,
   Registration,
   Role,
   PermissionKey,
   SocialGroup,
-  Trustee,
 } from "@/types"
 
 export const FISCAL_YEAR = "2025-26"
@@ -126,18 +126,18 @@ const registrations: Registration[] = [
   { id: "r8", regNo: "REG-1039", name: "Ankit Somani", email: "ankit.somani@gmail.com", phone: "+91 98450 33445", gender: "Male", dob: "1993-12-15", groupId: "g8", city: "Bengaluru", proposal: "Applied during community health camp", appliedOn: "2026-09-07", status: "rejected", reviewedBy: "Rohit Shah", reviewedOn: "2026-09-09", notes: "Incomplete address verification details." },
 ]
 
-const designations: Trustee["designation"][] = ["President", "Secretary", "Treasurer", "Vice President", "Joint Secretary", "Trustee Member"]
+const designations: MockPostHolder["designation"][] = ["President", "Secretary", "Treasurer", "Vice President", "Joint Secretary", "Post Holder"]
 
-const trusteeNames = [
+const postHolderNames = [
   "Rajesh Shah", "Pankaj Mehta", "Sonal Shah", "Deepak Khandelwal", "Kavita Bhandari",
   "Nimesh Doshi", "Arti Vora", "Prashant Kothari", "Bhavesh Chhajed", "Meena Ranka",
   "Harish Jain", "Swati Gandhi", "Akshay Shah", "Vipul Mehta", "Rekha Jain",
   "Sandeep Khandelwal", "Pooja Bhandari", "Jignesh Doshi", "Neha Kothari", "Arjun Maloo",
 ]
 
-const trustees: Trustee[] = groups.flatMap((g, gi) =>
+const postHolders: MockPostHolder[] = groups.flatMap((g, gi) =>
   designations.slice(0, gi % 3 === 0 ? 5 : 4).map((d, di) => {
-    const name = trusteeNames[(gi * 4 + di) % trusteeNames.length]
+    const name = postHolderNames[(gi * 4 + di) % postHolderNames.length]
     return {
       id: `t${gi * 10 + di}`,
       name,
@@ -229,7 +229,7 @@ const roles: Role[] = [
 function allPermissions(value: boolean): Record<PermissionKey, boolean> {
   return {
     "members.view": value, "members.manage": value, "registrations.approve": value,
-    "trustees.manage": value, "groups.manage": value, "locations.manage": value,
+    "postHolders.manage": value, "groups.manage": value, "locations.manage": value,
     "community.manage": value, "events.manage": value, "news.manage": value,
     "notifications.send": value, "ads.approve": value, "roles.manage": value,
     "reports.view": value, "fees.manage": value, "payments.view": value, "payments.refund": value,
@@ -309,7 +309,7 @@ const db = {
   groups,
   members,
   registrations,
-  trustees,
+  postHolders,
   cities,
   communityInfo,
   events,
@@ -329,7 +329,7 @@ export function resetDb() {
   db.groups.splice(0, db.groups.length, ...makeGroups())
   db.members.splice(0, db.members.length, ...members)
   db.registrations.splice(0, db.registrations.length, ...registrations)
-  db.trustees.splice(0, db.trustees.length, ...trustees)
+  db.postHolders.splice(0, db.postHolders.length, ...postHolders)
   db.cities.splice(0, db.cities.length, ...cities)
   db.communityInfo.splice(0, db.communityInfo.length, ...communityInfo)
   db.events.splice(0, db.events.length, ...events)
