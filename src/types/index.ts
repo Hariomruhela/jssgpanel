@@ -627,6 +627,9 @@ export interface JainTirthRecord {
   status: string
   is_public: boolean
   group_id: string | null
+  contact_person?: string | null
+  contact_number?: string | null
+  contacts?: JainTirthContact[] | null
   /** How many gallery images the Jain Tirth holds. */
   image_count?: number
   created_at: string
@@ -648,6 +651,11 @@ export interface JainTirthDetail extends JainTirthRecord {
 }
 
 /** Payload for `POST /api/v1/jain-tirths`. */
+export interface JainTirthContact {
+  name?: string | null
+  phone?: string | null
+}
+
 export interface JainTirthCreateInput {
   title: string
   description?: string | null
@@ -661,6 +669,9 @@ export interface JainTirthCreateInput {
   /** Kept in the form; the current API ignores it. */
   tirth_date?: string | null
   group_id?: string | null
+  contact_person?: string | null
+  contact_number?: string | null
+  contacts?: JainTirthContact[] | null
 }
 
 /** Payload for `PATCH /jain-tirths/{id}` — every field optional, only what is sent changes. */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
+import { ImageIcon, Loader2, PlusCircle, Trash2, Upload, X } from "lucide-react"
 import { ApiError } from "@/lib/apiClient"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
-import type { JainTirthImageRecord, JainTirthRecord } from "@/types"
+import type { JainTirthContact, JainTirthImageRecord, JainTirthRecord } from "@/types"
 import {
   MAX_JAIN_TIRTH_IMAGES,
   MAX_JAIN_TIRTH_IMAGE_BYTES,
@@ -46,6 +46,11 @@ const STATUS_OPTIONS = [
   { label: "Completed", value: "COMPLETED" },
 ]
 
+interface ContactPerson {
+  name: string
+  phone: string
+}
+
 interface FormState {
   title: string
   /** ISO `yyyy-mm-dd`; the API is sent `dd/mm/yyyy`. */
@@ -56,6 +61,7 @@ interface FormState {
   city: string
   websiteUrl: string
   description: string
+  contacts: ContactPerson[]
 }
 
 /** A picked file together with the object URL showing it. */
@@ -79,6 +85,7 @@ function emptyForm(): FormState {
     city: "",
     websiteUrl: "",
     description: "",
+    contacts: [{ name: "", phone: "" }],
   }
 }
 
@@ -163,6 +170,23 @@ export function JainTirthFormDialog({
           return
         }
         const detail = detailResult.value
+        let contacts: ContactPerson[] = [{ name: "", phone: "" }]
+        if (Array.isArray(detail.contacts) && detail.contacts.length > 0) {
+          contacts = detail.contacts
+            .slice(0, 2)
+            .map((c: JainTirthContact) => ({
+              name: c?.name ?? "",
+              phone: c?.phone ?? "",
+            }))
+          if (contacts.length === 0) contacts = [{ name: "", phone: "" }]
+        } else if (detail.contact_person || detail.contact_number) {
+          contacts = [
+            {
+              name: detail.contact_person ?? "",
+              phone: detail.contact_number ?? "",
+            },
+          ]
+        }
         setForm({
           title: detail.title,
           tirthDate: fromApiDate(detail.tirth_date) || fromApiDate(editing.tirth_date),
@@ -172,6 +196,7 @@ export function JainTirthFormDialog({
           city: detail.city ?? "",
           websiteUrl: detail.website_url ?? "",
           description: detail.description ?? "",
+          contacts,
         })
         setImages(
           imagesResult.status === "fulfilled" ? imagesResult.value : (detail.images ?? [])
@@ -273,6 +298,13 @@ export function JainTirthFormDialog({
     setSaving(true)
     try {
       // `tirth_date` is not part of the API's Jain Tirth model, so it is not sent.
+      const cleanedContacts = form.contacts
+        .map((c) => ({
+          name: c.name.trim() || null,
+          phone: c.phone.trim() || null,
+        }))
+        .filter((c) => c.name || c.phone)
+        .slice(0, 2)
       const payload = {
         title: form.title.trim(),
         status: form.status,
@@ -281,6 +313,9 @@ export function JainTirthFormDialog({
         city: form.city.trim() || null,
         website_url: form.websiteUrl.trim() || null,
         description: form.description.trim() || null,
+        contacts: cleanedContacts.length > 0 ? cleanedContacts : null,
+        contact_person: cleanedContacts[0]?.name ?? null,
+        contact_number: cleanedContacts[0]?.phone ?? null,
       }
       const targetId = editing?.id ?? savedId
       const isNew = !targetId
@@ -426,6 +461,76 @@ export function JainTirthFormDialog({
                 placeholder="What the Jain Tirth is about…"
               />
             </FormField>
+
+            <div className="sm:col-span-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Contact Person And Contact Number</label>
+                {form.contacts.length < 2 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setForm((s) => ({
+                        ...s,
+                        contacts: [...s.contacts, { name: "", phone: "" }],
+                      }))
+                    }
+                  >
+                    <PlusCircle />
+                    Add contact person
+                  </Button>
+                )}
+              </div>
+              {form.contacts.map((contact, index) => (
+                <div key={index} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField label={index === 0 ? "Contact Person" : `Contact Person ${index + 1}`}>
+                    <Input
+                      value={contact.name}
+                      onChange={(e) =>
+                        setForm((s) => {
+                          const next = [...s.contacts]
+                          next[index] = { ...next[index], name: e.target.value }
+                          return { ...s, contacts: next }
+                        })
+                      }
+                      placeholder="e.g. Ramesh Jain"
+                    />
+                  </FormField>
+                  <FormField label={index === 0 ? "Contact Number" : `Contact Number ${index + 1}`}>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={contact.phone}
+                        onChange={(e) =>
+                          setForm((s) => {
+                            const next = [...s.contacts]
+                            next[index] = { ...next[index], phone: e.target.value }
+                            return { ...s, contacts: next }
+                          })
+                        }
+                        placeholder="+919876543210"
+                      />
+                      {form.contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setForm((s) => ({
+                              ...s,
+                              contacts: s.contacts.filter((_, i) => i !== index),
+                            }))
+                          }
+                          aria-label="Remove contact"
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </FormField>
+                </div>
+              ))}
+            </div>
 
             <FormField
               label="Cover image"

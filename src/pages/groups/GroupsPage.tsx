@@ -617,7 +617,7 @@ function GroupsPage() {
             <DialogDescription>Manage federation social group details.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="Group name" required className="sm:col-span-2">
+            <FormField label="Jain Social Group" required className="sm:col-span-2">
               <Input
                 value={form.name}
                 onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
@@ -638,14 +638,14 @@ function GroupsPage() {
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="Contact name">
+            <FormField label="Group Admin">
               <Input
                 value={form.contact_name ?? ""}
                 onChange={(e) => setForm((s) => ({ ...s, contact_name: e.target.value }))}
                 placeholder="e.g. Asha Shah"
               />
             </FormField>
-            <FormField label="Contact phone">
+            <FormField label="Mobile no.">
               <Input
                 value={form.contact_phone ?? ""}
                 onChange={(e) => setForm((s) => ({ ...s, contact_phone: e.target.value }))}
@@ -701,7 +701,7 @@ function GroupsPage() {
                 />
               </div>
             </FormField>
-            <FormField label="Description" className="sm:col-span-2">
+            <FormField label="Group Description" className="sm:col-span-2">
               <Textarea
                 value={form.description ?? ""}
                 onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
@@ -710,26 +710,15 @@ function GroupsPage() {
               />
             </FormField>
             <FormField label="State" required>
-              <Select
+              <SearchableSelect
+                options={stateOptions.map((state) => ({ value: state, label: state }))}
                 value={form.state ?? ""}
-                onValueChange={(state) =>
-                  setForm((s) => ({ ...s, state, city: "" }))
-                }
+                onChange={(state) => setForm((s) => ({ ...s, state, city: "" }))}
+                placeholder={states.loading && stateOptions.length === 0 ? "Loading states…" : "Select state"}
+                searchPlaceholder="Type a state name…"
+                emptyText="No state matched."
                 disabled={states.loading && stateOptions.length === 0}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={states.loading ? "Loading states…" : "Select state"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {stateOptions.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
               {states.error && (
                 <p className="text-xs text-destructive">
                   Could not load states: {states.error.message}
