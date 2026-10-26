@@ -51,6 +51,15 @@ function memberPhoto(member: MemberRecord): string | null {
   return member.profile_photo_url || member.member_photo_link || null
 }
 
+function groupNames(member: MemberRecord): string {
+  const memberships = [...(member.group_memberships ?? [])].sort((a, b) => a.priority - b.priority)
+  const names = memberships
+    .map((membership) => membership.group_name)
+    .filter((name): name is string => !!name)
+  if (names.length > 0) return names.join(", ")
+  return member.social_group_name || "—"
+}
+
 /** The English values are only ever converted here, at display time. */
 function buildSections(member: MemberRecord): Section[] {
   return [
@@ -69,7 +78,7 @@ function buildSections(member: MemberRecord): Section[] {
         { label: "Education", value: member.member_education },
         { label: "Occupation", value: member.member_occupation },
         { label: "Company", value: member.company_name },
-        { label: "Social group", value: member.social_group_name },
+        { label: "Social groups", value: groupNames(member) },
         { label: "Designation", value: member.group_designation },
         { label: "Interests", value: member.interest_fields },
         { label: "Occupation summary", value: member.occupation_summary, wide: true },
@@ -81,6 +90,7 @@ function buildSections(member: MemberRecord): Section[] {
         { label: "Address", value: member.address, wide: true, raw: true },
         { label: "Address line", value: member.address_line, wide: true, raw: true },
         { label: "Business address", value: member.business_address, wide: true, raw: true },
+        { label: "Business designation", value: member.business_designation },
         { label: "City", value: member.city },
         { label: "Area", value: member.area },
       ],
@@ -135,11 +145,11 @@ function buildSections(member: MemberRecord): Section[] {
     {
       title: "Record",
       fields: [
-        { label: "Member ID", value: member.id, raw: true },
+        { label: "Member ID", value: member.membership_number || member.id, raw: true },
         { label: "Full name", value: member.full_name },
         { label: "Phone", value: member.phone_number, raw: true },
         { label: "Email", value: member.email, raw: true },
-        { label: "Group", value: member.social_group_name || "—" },
+        { label: "Groups", value: groupNames(member) },
         { label: "Joined", value: formatDateTime(member.joined_at ?? member.created_at), raw: true },
         { label: "Approved", value: formatDateTime(member.approved_at ?? ""), raw: true },
         { label: "Created", value: formatDateTime(member.created_at), raw: true },

@@ -25,7 +25,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { StatusBadge } from "@/components/StatusBadge"
 import { useData } from "@/lib/useData"
 import { useLanguage } from "@/lib/language"
-import { formatDate, initials } from "@/lib/format"
+import { initials } from "@/lib/format"
 import type { MemberRecord } from "@/types"
 import { getMemberGroups, getMemberLocations, getMember, getMembers, getMembershipCounts, removeMember } from "@/services/api/members"
 import { useAuth } from "@/lib/auth"
@@ -140,9 +140,18 @@ export default function MembersPage() {
     [options.data?.groups]
   )
 
-  /** The linked group wins, then the free-text name carried by sheet imports. */
-  const groupLabel = (m: MemberRecord) =>
-    (m.group_id ? groupById[m.group_id] : null) || m.social_group_name || "—"
+  /** Every linked membership, primary first, then the free-text sheet name. */
+  const groupNames = (m: MemberRecord): string[] => {
+    const memberships = [...(m.group_memberships ?? [])].sort((a, b) => a.priority - b.priority)
+    const names = memberships
+      .map((membership) => membership.group_name || groupById[membership.group_id])
+      .filter((name): name is string => !!name)
+    if (names.length > 0) return names
+    const primary = (m.group_id ? groupById[m.group_id] : null) || m.social_group_name
+    return primary ? [primary] : []
+  }
+
+  const groupLabel = (m: MemberRecord) => groupNames(m).join(", ") || "—"
 
   const viewMember = async (member: MemberRecord) => {
     // Keep the label resolution from the row: the linked group wins over the free-text name.
@@ -183,7 +192,6 @@ export default function MembersPage() {
     { id: "city", header: t("City"), cell: (m) => [h(m.city), h(m.area)].filter(Boolean).join(", ") || "—" },
     { id: "phone", header: t("Phone"), cell: (m) => m.phone_number || "—" },
     { id: "family", header: t("Family"), cell: (m) => m.family_member_count || "0" },
-    { id: "joined", header: t("Joined"), cell: (m) => formatDate(m.joined_at ?? m.created_at) },
     {
       id: "approval",
       header: t("Approval"),
@@ -361,6 +369,7 @@ export default function MembersPage() {
             m.contact_email,
             m.spouse_name,
             m.spouse_mobile,
+            ...groupNames(m),
             m.group_id ? groupById[m.group_id] : null,
             m.social_group_name,
             m.city,
@@ -368,6 +377,7 @@ export default function MembersPage() {
             m.address,
             m.address_line,
             m.business_address,
+            m.business_designation,
             m.gender,
             m.blood_group,
             m.member_occupation,

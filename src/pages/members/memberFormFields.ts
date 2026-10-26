@@ -50,11 +50,11 @@ export type MemberFieldKey =
   | "social_group_name"
   | "interest_fields"
   | "business_address"
+  | "business_designation"
   | "address"
   | "city"
   | "area"
   | "address_line"
-  | "group_id"
 
 export type FieldType = "text" | "email" | "tel" | "url" | "date" | "number" | "textarea" | "select"
 
@@ -77,6 +77,9 @@ export interface FieldSection<K extends string = MemberFieldKey> {
 }
 
 const GENDERS = ["Male", "Female", "Other"].map((value) => ({ label: value, value }))
+const BUSINESS_DESIGNATIONS = ["Director", "Partner", "MD", "Chairperson", "Proprietor"].map(
+  (value) => ({ label: value, value })
+)
 
 
 export const CREATE_SECTIONS: FieldSection[] = [
@@ -84,7 +87,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
     id: "identity",
     label: "Identity",
     fields: [
-      { key: "group_id", label: "Social group", type: "select", required: true, full: true, optionsSource: "groups" },
       { key: "full_name", label: "Full name", type: "text", required: true, full: true, placeholder: "e.g. Rahul Mehta" },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
       { key: "member_dob", label: "Date of birth", type: "date" },
@@ -155,6 +157,7 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "address", label: "Address", type: "textarea", full: true },
       { key: "address_line", label: "Address line", type: "textarea", full: true },
       { key: "business_address", label: "Business address", type: "textarea", full: true },
+      { key: "business_designation", label: "Business designation", type: "select", options: BUSINESS_DESIGNATIONS },
       { key: "city", label: "City", type: "text" },
       { key: "area", label: "Area", type: "text" },
     ],
@@ -195,6 +198,12 @@ export function emptyMemberForm(): MemberFormState {
   return state
 }
 
+export function memberGroupIds(member: MemberRecord): string[] {
+  const memberships = [...(member.group_memberships ?? [])].sort((a, b) => a.priority - b.priority)
+  if (memberships.length > 0) return memberships.map((membership) => membership.group_id)
+  return member.group_id ? [member.group_id] : []
+}
+
 export function memberToFormState(member: MemberRecord): MemberFormState {
   const state = emptyMemberForm()
   for (const section of TRACKED_SECTIONS) {
@@ -229,10 +238,15 @@ function toNullable(state: MemberFormState, key: MemberFieldKey): string | null 
   return value ? value : null
 }
 
-export function toCreateInput(state: MemberFormState, userId: string | null): MemberCreateInput {
+export function toCreateInput(
+  state: MemberFormState,
+  userId: string | null,
+  groupIds: string[]
+): MemberCreateInput {
   const input: MemberCreateInput = {
     full_name: state.full_name.trim(),
     phone_number: state.phone_number.trim(),
+    group_ids: groupIds,
     // A community member does not need a login account. Linking one stays optional,
     // so an imported/Google Sheet member can be created without provisioning a User.
     user_id: userId,
@@ -250,8 +264,8 @@ export function toCreateInput(state: MemberFormState, userId: string | null): Me
 /** Every field the create form shows, sent as one PATCH: the API applies the
  * keys it receives and leaves the rest alone, so an edit round-trips the whole
  * profile the dialog rendered. */
-export function toPatchInput(state: MemberFormState): MemberPatchInput {
-  const input: MemberPatchInput = {}
+export function toPatchInput(state: MemberFormState, groupIds: string[]): MemberPatchInput {
+  const input: MemberPatchInput = { group_ids: groupIds }
   const target = input as Record<string, string | null>
   for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {

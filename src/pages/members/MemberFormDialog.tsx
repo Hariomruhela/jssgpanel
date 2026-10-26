@@ -10,9 +10,11 @@ import { PhotoCropDialog } from "@/components/PhotoCropDialog"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MemberFieldGrid } from "./MemberFieldGrid"
+import { MemberGroupsPicker } from "./MemberGroupsPicker"
 import {
   CREATE_SECTIONS,
   emptyMemberForm,
+  memberGroupIds,
   memberToFormState,
   resolveSections,
   toCreateInput,
@@ -134,6 +136,7 @@ export function MemberFormDialog({
   const [form, setForm] = useState<MemberFormState>(() =>
     editing ? memberToFormState(editing) : emptyMemberForm()
   )
+  const [groupIds, setGroupIds] = useState<string[]>(() => (editing ? memberGroupIds(editing) : []))
   const [saving, setSaving] = useState(false)
   const [photos, setPhotos] = useState<{ member?: File; spouse?: File }>({})
   const [previews, setPreviews] = useState<{ member?: string; spouse?: string }>({})
@@ -213,8 +216,8 @@ export function MemberFormDialog({
       onRequireSignIn()
       return
     }
-    if (!form.group_id.trim()) {
-      toast.error("Social group is required")
+    if (groupIds.length === 0) {
+      toast.error("At least one social group is required")
       return
     }
     if (!form.full_name.trim()) {
@@ -236,7 +239,7 @@ export function MemberFormDialog({
     try {
       let saved: MemberRecord
       if (editing) {
-        const updated = await updateMember(editing.id, toPatchInput(form))
+        const updated = await updateMember(editing.id, toPatchInput(form, groupIds))
         saved = { ...editing, ...updated }
         toast.success("Member updated successfully")
       } else {
@@ -250,7 +253,7 @@ export function MemberFormDialog({
           phone_number: form.phone_number.trim() || null,
           role_name: "MEMBER",
         })
-        saved = await createMember(toCreateInput(form, account.id))
+        saved = await createMember(toCreateInput(form, account.id, groupIds))
         // The API creates members as PENDING; approve straight away so a member
         // added from the panel never sits in the group list with a pending status.
         try {
@@ -358,6 +361,16 @@ export function MemberFormDialog({
             </TabsList>
             {sections.map((section) => (
               <TabsContent key={section.id} value={section.id} className="pt-4">
+                {section.id === "identity" && (
+                  <div className="mb-4">
+                    <MemberGroupsPicker
+                      value={groupIds}
+                      options={optionSets.groups}
+                      disabled={!signedIn}
+                      onChange={setGroupIds}
+                    />
+                  </div>
+                )}
                 <MemberFieldGrid sections={[section]} values={form} onChange={change} disabled={!signedIn} />
               </TabsContent>
             ))}

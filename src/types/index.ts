@@ -163,6 +163,7 @@ export interface MemberRecord {
   social_group_name: string | null
   interest_fields: string | null
   business_address: string | null
+  business_designation: string | null
   address: string | null
   city: string | null
   area: string | null
@@ -172,6 +173,8 @@ export interface MemberRecord {
   /** null when the member has no linked login account (e.g. imported members). */
   user_id: string | null
   group_id: string | null
+  /** Every group this member belongs to; the first priority is the primary. */
+  group_memberships?: MemberGroupMembership[]
   location_id: string | null
   first_name: string | null
   middle_name: string | null
@@ -197,6 +200,19 @@ export interface MemberRecord {
   created_at: string
   updated_at: string
 }
+
+export interface MemberGroupMembership {
+  id: string
+  group_id: string
+  group_name: string | null
+  group_code: string | null
+  priority: number
+  is_primary: boolean
+  joined_at: string | null
+}
+
+/** A member's additive group memberships, primary first. */
+export type MemberGroupMemberships = MemberGroupMembership[]
 
 export interface MemberCreateInput {
   full_name: string
@@ -252,11 +268,14 @@ export interface MemberCreateInput {
   social_group_name?: string | null
   interest_fields?: string | null
   business_address?: string | null
+  business_designation?: string | null
   address?: string | null
   city?: string | null
   area?: string | null
   email?: string | null
   group_id?: string | null
+  /** Ordered group selection: the first group is primary. */
+  group_ids?: string[] | null
   location_id?: string | null
   first_name?: string | null
   middle_name?: string | null
@@ -477,6 +496,8 @@ export interface GroupMember {
   last_name: string | null
   membership_number: string | null
   membership_status: string
+  group_id?: string | null
+  group_ids?: string[]
   contact_email: string | null
   contact_phone: string | null
   profile_photo_url: string | null
