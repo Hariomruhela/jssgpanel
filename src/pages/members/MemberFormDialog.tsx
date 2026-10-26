@@ -213,6 +213,10 @@ export function MemberFormDialog({
       onRequireSignIn()
       return
     }
+    if (!form.group_id.trim()) {
+      toast.error("Social group is required")
+      return
+    }
     if (!form.full_name.trim()) {
       toast.error("Full name is required")
       return

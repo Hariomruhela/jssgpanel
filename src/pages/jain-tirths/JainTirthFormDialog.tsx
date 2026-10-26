@@ -171,7 +171,27 @@ export function JainTirthFormDialog({
         }
         const detail = detailResult.value
         let contacts: ContactPerson[] = [{ name: "", phone: "" }]
-        if (Array.isArray(detail.contacts) && detail.contacts.length > 0) {
+        if (
+          detail.contact_person_name_1 ||
+          detail.contact_person_phone_1 ||
+          detail.contact_person_name_2 ||
+          detail.contact_person_phone_2
+        ) {
+          const list: ContactPerson[] = []
+          if (detail.contact_person_name_1 || detail.contact_person_phone_1) {
+            list.push({
+              name: detail.contact_person_name_1 ?? "",
+              phone: detail.contact_person_phone_1 ?? "",
+            })
+          }
+          if (detail.contact_person_name_2 || detail.contact_person_phone_2) {
+            list.push({
+              name: detail.contact_person_name_2 ?? "",
+              phone: detail.contact_person_phone_2 ?? "",
+            })
+          }
+          if (list.length > 0) contacts = list
+        } else if (Array.isArray(detail.contacts) && detail.contacts.length > 0) {
           contacts = detail.contacts
             .slice(0, 2)
             .map((c: JainTirthContact) => ({
@@ -313,7 +333,10 @@ export function JainTirthFormDialog({
         city: form.city.trim() || null,
         website_url: form.websiteUrl.trim() || null,
         description: form.description.trim() || null,
-        contacts: cleanedContacts.length > 0 ? cleanedContacts : null,
+        contact_person_name_1: cleanedContacts[0]?.name ?? null,
+        contact_person_phone_1: cleanedContacts[0]?.phone ?? null,
+        contact_person_name_2: cleanedContacts[1]?.name ?? null,
+        contact_person_phone_2: cleanedContacts[1]?.phone ?? null,
         contact_person: cleanedContacts[0]?.name ?? null,
         contact_number: cleanedContacts[0]?.phone ?? null,
       }

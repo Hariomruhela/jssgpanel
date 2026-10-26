@@ -84,6 +84,7 @@ export const CREATE_SECTIONS: FieldSection[] = [
     id: "identity",
     label: "Identity",
     fields: [
+      { key: "group_id", label: "Social group", type: "select", required: true, full: true, optionsSource: "groups" },
       { key: "full_name", label: "Full name", type: "text", required: true, full: true, placeholder: "e.g. Rahul Mehta" },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
       { key: "member_dob", label: "Date of birth", type: "date" },
@@ -156,7 +157,6 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "business_address", label: "Business address", type: "textarea", full: true },
       { key: "city", label: "City", type: "text" },
       { key: "area", label: "Area", type: "text" },
-      { key: "group_id", label: "Social group", type: "select", optionsSource: "groups" },
     ],
   },
 ]

@@ -32,10 +32,12 @@ export function MemberFieldGrid({ sections, values, onChange, disabled = false }
                       onValueChange={(v) => onChange(field.key, v === "__none__" ? "" : v)}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Not set" />
+                        <SelectValue
+                          placeholder={field.required ? `Select ${field.label.toLowerCase()}` : "Not set"}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Not set</SelectItem>
+                        {!field.required && <SelectItem value="__none__">Not set</SelectItem>}
                         {(field.options ?? []).map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}

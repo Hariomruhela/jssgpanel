@@ -61,11 +61,12 @@ function listQuery(params: TrusteeListParams): URLSearchParams {
 }
 
 /**
- * The trustees of the directory (`GET /trustees`).
+ * The post holders of the directory (`GET /trustees`).
  *
- * A trustee is a community member whose group designation is filled in, so
- * this listing is the member listing narrowed to the members that carry a
- * designation - it is what the panel's post holder table shows.
+ * A post holder is a member whose linked account is a group/platform admin or
+ * whose group designation is a recognised office (President, Secretary,
+ * Treasurer, ...). This is the member listing narrowed to those members - it is
+ * what the panel's post holder table shows.
  */
 export async function getTrustees(
   params: TrusteeListParams = {}
@@ -89,8 +90,8 @@ export async function getTrustees(
 /**
  * The board seats of the `trustees` table (`GET /trustees/board`).
  *
- * A seat is the board's own record of a trustee: it carries the term and the
- * order of the seat. A member can be a trustee without a seat (their
+ * A seat is the board's own record of a post holder: it carries the term and
+ * the order of the seat. A member can be a post holder without a seat (their
  * designation is enough), so the panel reads the seats to learn the term and
  * writes one when the post holder is edited.
  */

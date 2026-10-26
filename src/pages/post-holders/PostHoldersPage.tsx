@@ -29,36 +29,65 @@ import { getGroups } from "@/services/api/groups"
 
 const PAGE_SIZE = 20
 
-const DESIGNATIONS = [
+const POST_HOLDER_DESIGNATIONS = [
+  { value: "President", label: "President" },
+  { value: "Vice President", label: "Vice President" },
+  { value: "Chairman", label: "Chairman" },
+  { value: "Chairman & Managing Director", label: "Chairman & Managing Director" },
+  { value: "Protector", label: "Protector" },
+  { value: "Secretary", label: "Secretary" },
+  { value: "Treasurer", label: "Treasurer" },
+  { value: "Publicity Secretary", label: "Publicity Secretary" },
+  { value: "Secretary Treasurer", label: "Secretary Treasurer" },
+]
+
+const ADMIN_DESIGNATIONS = [
   { value: "SUPER_ADMIN", label: "Super Admin" },
   { value: "GROUP_ADMIN", label: "Group Admin" },
 ]
 
+const ALL_DESIGNATIONS = [...POST_HOLDER_DESIGNATIONS, ...ADMIN_DESIGNATIONS]
+
 const DESIGNATION_LABELS: Record<string, string> = Object.fromEntries(
-  DESIGNATIONS.map((designation) => [designation.value, designation.label])
+  ALL_DESIGNATIONS.map((designation) => [designation.value, designation.label])
 )
 
+function normalizeDesignation(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/&/g, " AND ")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+}
+
+const DESIGNATION_BY_NORMALIZED: Record<string, string> = {
+  ...Object.fromEntries(
+    ALL_DESIGNATIONS.map((designation) => [
+      normalizeDesignation(designation.value),
+      designation.value,
+    ])
+  ),
+  SUPERADMIN: "SUPER_ADMIN",
+  GROUPADMIN: "GROUP_ADMIN",
+}
+
 function matchDesignation(value: string | null | undefined): string | null {
-  const normalized = (value ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_")
-  if (normalized === "SUPER_ADMIN" || normalized === "SUPERADMIN") {
-    return "SUPER_ADMIN"
-  }
-  if (normalized === "GROUP_ADMIN" || normalized === "GROUPADMIN") {
-    return "GROUP_ADMIN"
-  }
-  return null
+  return DESIGNATION_BY_NORMALIZED[normalizeDesignation(value)] ?? null
 }
 
 function canonicalDesignation(
   value: string | null | undefined,
   role?: string | null
 ): string {
-  return matchDesignation(value) ?? matchDesignation(role) ?? "GROUP_ADMIN"
+  const designation = (value ?? "").trim()
+  if (designation) return matchDesignation(designation) ?? designation
+  return matchDesignation(role) ?? "President"
 }
 
 function designationLabel(value: string): string {
   const matched = matchDesignation(value)
-  return matched ? DESIGNATION_LABELS[matched] : value
+  return matched ? DESIGNATION_LABELS[matched] ?? matched : value
 }
 
 /** Sentinel for the selects: an empty string is not a valid Radix select value. */
@@ -77,7 +106,7 @@ interface PostHolderForm {
 const DEFAULT_FORM: PostHolderForm = {
   firstName: "",
   lastName: "",
-  designation: "GROUP_ADMIN",
+  designation: "President",
   groupId: "",
   memberId: "",
   phone: "",
@@ -137,6 +166,17 @@ export default function PostHoldersPage() {
   const [deleting, setDeleting] = useState<MemberTrusteeRecord | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<PostHolderForm>(DEFAULT_FORM)
+
+  // Keep a legacy designation visible when editing instead of silently showing
+  // the first option. New records only offer the recognised post-holder offices.
+  const designationOptions = useMemo(() => {
+    const options = [...POST_HOLDER_DESIGNATIONS]
+    const current = canonicalDesignation(dialog.editing?.designation, dialog.editing?.role)
+    if (current && !options.some((option) => option.value === current)) {
+      options.unshift({ value: current, label: current })
+    }
+    return options
+  }, [dialog.editing])
 
   // The members of the group the form points at, so a post holder can be
   // linked to the member record it belongs to.
@@ -226,7 +266,7 @@ export default function PostHoldersPage() {
       }
     }
     setSaving(true)
-    const designation = form.designation || "GROUP_ADMIN"
+    const designation = form.designation || "President"
     try {
       if (dialog.editing) {
         // Only the designation is editable. The seat and the member stay in
@@ -495,7 +535,7 @@ export default function PostHoldersPage() {
                   <SelectValue placeholder="Select designation" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DESIGNATIONS.map((designation) => (
+                  {designationOptions.map((designation) => (
                     <SelectItem key={designation.value} value={designation.value}>
                       {designation.label}
                     </SelectItem>

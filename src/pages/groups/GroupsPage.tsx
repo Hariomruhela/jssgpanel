@@ -250,6 +250,14 @@ function GroupsPage() {
       toast.error("City and state are required.")
       return
     }
+    const current = dialog.editing
+    const editing = !!current
+    const adminName = form.contact_name?.trim() || ""
+    const adminPhone = form.contact_phone?.trim() || ""
+    if (!editing && (adminName || adminPhone) && (!adminName || !adminPhone)) {
+      toast.error("Enter both the Group Admin name and mobile number to register the admin.")
+      return
+    }
     setSaving(true)
     try {
       const payload: GroupInput = {
@@ -265,8 +273,14 @@ function GroupsPage() {
         logo_url: form.logo_url?.trim() || null,
         location_id: form.location_id?.trim() || null,
       }
-      const saved = dialog.editing
-        ? await updateGroup(dialog.editing.id, payload)
+      // `POST /groups` creates/promotes this account as GROUP_ADMIN and registers
+      // its member record in the same request. `PATCH` ignores these fields.
+      if (!editing && adminName && adminPhone) {
+        payload.admin_name = adminName
+        payload.admin_phone_number = adminPhone
+      }
+      const saved = current
+        ? await updateGroup(current.id, payload)
         : await createGroup(payload)
       toast.success(`${payload.name} ${dialog.editing ? "updated" : "created"}`)
 

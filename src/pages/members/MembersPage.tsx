@@ -4,6 +4,8 @@ import { ApiError } from "@/lib/apiClient"
 import {
   BadgeCheck,
   Eye,
+  Flag,
+  FlagOff,
   KeyRound,
   Lock,
   LogIn,
@@ -20,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { StatusBadge } from "@/components/StatusBadge"
 import { useData } from "@/lib/useData"
 import { useLanguage } from "@/lib/language"
 import { formatDate, initials } from "@/lib/format"
@@ -27,6 +30,7 @@ import type { MemberRecord } from "@/types"
 import { getMemberGroups, getMemberLocations, getMember, getMembers, getMembershipCounts, removeMember } from "@/services/api/members"
 import { useAuth } from "@/lib/auth"
 import { ApiSignInDialog } from "./ApiSignInDialog"
+import { MemberApprovalDialog } from "./MemberApprovalDialog"
 import { MemberFormDialog } from "./MemberFormDialog"
 import { MemberViewDialog } from "./MemberViewDialog"
 import { RoleDialog } from "./RoleDialog"
@@ -72,6 +76,7 @@ export default function MembersPage() {
   })
   const [formVersion, setFormVersion] = useState(0)
   const [viewing, setViewing] = useState<MemberRecord | null>(null)
+  const [approvalMember, setApprovalMember] = useState<MemberRecord | null>(null)
   const [roleMember, setRoleMember] = useState<MemberRecord | null>(null)
   const [deleting, setDeleting] = useState<MemberRecord | null>(null)
   const [busy, setBusy] = useState(false)
@@ -179,6 +184,32 @@ export default function MembersPage() {
     { id: "phone", header: t("Phone"), cell: (m) => m.phone_number || "—" },
     { id: "family", header: t("Family"), cell: (m) => m.family_member_count || "0" },
     { id: "joined", header: t("Joined"), cell: (m) => formatDate(m.joined_at ?? m.created_at) },
+    {
+      id: "approval",
+      header: t("Approval"),
+      cell: (m) => {
+        const approved = m.membership_status === "APPROVED"
+        const label = approved ? t("Unapprove member") : t("Approve member")
+        return (
+          <button
+            type="button"
+            className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs transition-colors hover:bg-muted ${
+              approved ? "text-emerald-600" : "text-muted-foreground"
+            }`}
+            onClick={() => (signedIn ? setApprovalMember(m) : requireSignIn())}
+            aria-label={`${label}: ${m.full_name}`}
+            title={label}
+          >
+            {approved ? (
+              <Flag className="size-3.5 fill-current" />
+            ) : (
+              <FlagOff className="size-3.5" />
+            )}
+            <StatusBadge status={m.membership_status} showDot={false} />
+          </button>
+        )
+      },
+    },
     {
       id: "actions",
       header: "",
@@ -381,6 +412,17 @@ export default function MembersPage() {
       />
 
       <MemberViewDialog member={viewing} onOpenChange={(open) => !open && setViewing(null)} onEdit={openEdit} />
+
+      <MemberApprovalDialog
+        key={approvalMember?.id ?? "closed"}
+        member={approvalMember}
+        onOpenChange={(open) => !open && setApprovalMember(null)}
+        onSaved={(updated) => {
+          setViewing((current) => (current?.id === updated.id ? { ...current, ...updated } : current))
+          setApprovalMember(null)
+          refresh()
+        }}
+      />
 
       {/* Keyed by member so the dialog's role and group pickers start from that member. */}
       <RoleDialog

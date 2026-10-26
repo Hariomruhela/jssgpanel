@@ -355,8 +355,9 @@ export interface TrusteeRecord {
 }
 
 /**
- * A trustee of the directory, exactly as `GET /api/v1/trustees` returns it
- * (`MemberTrusteeOut`): the member whose group designation is filled in.
+ * A post holder of the directory, exactly as `GET /api/v1/trustees` returns it
+ * (`MemberTrusteeOut`): a member whose linked account is an admin or whose group
+ * designation is a recognised post-holder office.
  */
 export interface MemberTrusteeRecord {
   id: string
@@ -460,6 +461,12 @@ export interface GroupInput {
   status?: string
   is_active?: boolean
   location_id?: string | null
+  /**
+   * `POST /groups` only: the account created (or promoted) as this group's
+   * GROUP_ADMIN, together with its member record. Must be sent as a pair.
+   */
+  admin_name?: string | null
+  admin_phone_number?: string | null
 }
 
 /** An item of `GET /api/v1/groups/{id}/members`. */
@@ -629,6 +636,10 @@ export interface JainTirthRecord {
   group_id: string | null
   contact_person?: string | null
   contact_number?: string | null
+  contact_person_name_1?: string | null
+  contact_person_phone_1?: string | null
+  contact_person_name_2?: string | null
+  contact_person_phone_2?: string | null
   contacts?: JainTirthContact[] | null
   /** How many gallery images the Jain Tirth holds. */
   image_count?: number
@@ -671,6 +682,10 @@ export interface JainTirthCreateInput {
   group_id?: string | null
   contact_person?: string | null
   contact_number?: string | null
+  contact_person_name_1?: string | null
+  contact_person_phone_1?: string | null
+  contact_person_name_2?: string | null
+  contact_person_phone_2?: string | null
   contacts?: JainTirthContact[] | null
 }
 
