@@ -1,20 +1,22 @@
 import type { LucideIcon } from "lucide-react"
 import {
-  Bell,
+ 
   Building2,
   CalendarDays,
-  CreditCard,
-  FileBarChart,
+  
   IndianRupee,
   Landmark,
   LayoutDashboard,
   MapPin,
-  Megaphone,
-  ReceiptText,
-  ShieldCheck,
+  
   Users,
 } from "lucide-react"
-
+//  Bell,
+//  CreditCard,
+//   FileBarChart,
+//   Megaphone,
+//   ReceiptText,
+//   ShieldCheck,
 export interface NavItem {
   title: string
   path: string
@@ -48,23 +50,23 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Events Management", path: "/admin/events", icon: CalendarDays },
       { title: "Jain Tirth Management", path: "/admin/jain-tirths", icon: MapPin },
       // { title: "News & Announcements", path: "/admin/news", icon: Newspaper },
-      { title: "Notifications", path: "/admin/notifications", icon: Bell },
-      { title: "Advertisements", path: "/admin/advertisements", icon: Megaphone },
+      // { title: "Notifications", path: "/admin/notifications", icon: Bell },
+      // { title: "Advertisements", path: "/admin/advertisements", icon: Megaphone },
     ],
   },
-  {
-    title: "Administration",
-    items: [
-      { title: "Roles & Permissions", path: "/admin/roles", icon: ShieldCheck },
-      { title: "Reports & Directory", path: "/admin/reports", icon: FileBarChart },
-    ],
-  },
+  // {
+  //   title: "Administration",
+  //   items: [
+  //     { title: "Roles & Permissions", path: "/admin/roles", icon: ShieldCheck },
+  //     { title: "Reports & Directory", path: "/admin/reports", icon: FileBarChart },
+  //   ],
+  // },
   {
     title: "Finance",
     items: [
       { title: "Annual Fee Management", path: "/admin/fees", icon: IndianRupee },
-      { title: "Payment Module", path: "/admin/payments", icon: CreditCard },
-      { title: "Payment Reports", path: "/admin/payment-reports", icon: ReceiptText },
+      // { title: "Payment Module", path: "/admin/payments", icon: CreditCard },
+      // { title: "Payment Reports", path: "/admin/payment-reports", icon: ReceiptText },
     ],
   },
 ]
