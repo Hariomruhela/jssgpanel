@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { CommunityInfo } from "@/types"
 import { createCommunityInfo, getCommunityInfo, removeCommunityInfo, updateCommunityInfo, type CommunityInfoInput } from "@/services/api/community"
 
@@ -58,20 +59,30 @@ export default function CommunityInfoPage() {
       }
       info.reload()
       setDialog({ open: false, editing: null })
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not save content."))
     } finally {
       setSaving(false)
     }
   }
 
   const toggleFeatured = async (c: CommunityInfo) => {
-    await updateCommunityInfo(c.id, { featured: !c.featured }, "Rohit Shah")
-    info.reload()
+    try {
+      await updateCommunityInfo(c.id, { featured: !c.featured }, "Rohit Shah")
+      info.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not update featured status."))
+    }
   }
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeCommunityInfo(deleting.id)
-    toast.success("Content removed")
+    try {
+      await removeCommunityInfo(deleting.id)
+      toast.success("Content removed")
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not remove content."))
+    }
   }
 
   return (

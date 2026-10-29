@@ -16,6 +16,7 @@ import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { Announcement } from "@/types"
 import { createAnnouncement, getAnnouncements, removeAnnouncement, updateAnnouncement, type AnnouncementInput } from "@/services/api/news"
 
@@ -73,20 +74,31 @@ export default function NewsPage() {
       }
       news.reload()
       setDialog({ open: false, editing: null })
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not save announcement."))
     } finally {
       setSaving(false)
     }
   }
 
   const togglePinned = async (a: Announcement) => {
-    await updateAnnouncement(a.id, { pinned: !a.pinned })
-    news.reload()
+    try {
+      await updateAnnouncement(a.id, { pinned: !a.pinned })
+      news.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not update announcement pin."))
+    }
   }
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeAnnouncement(deleting.id)
-    toast.success("Announcement removed")
+    try {
+      await removeAnnouncement(deleting.id)
+      toast.success("Announcement removed")
+      news.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not remove announcement."))
+    }
   }
 
   const columns: Column<Announcement>[] = [

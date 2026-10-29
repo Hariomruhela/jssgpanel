@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { formatDate, initials } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { Registration } from "@/types"
 import { approveRegistration, getRegistrations, rejectRegistration } from "@/services/api/registrations"
 import { getGroups } from "@/services/api/groups"
@@ -47,6 +48,8 @@ export default function RegistrationsPage() {
       await approveRegistration(approving.id, "Rohit Shah")
       toast.success(`${approving.name} approved`)
       regs.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not approve registration."))
     } finally {
       setBusy(false)
     }
@@ -60,6 +63,8 @@ export default function RegistrationsPage() {
       toast.success(`${rejecting.name} rejected`)
       setNotes("")
       regs.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not reject registration."))
     } finally {
       setBusy(false)
     }

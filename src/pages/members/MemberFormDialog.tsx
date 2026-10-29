@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Loader2, Trash2, X } from "lucide-react"
-import { ApiError } from "@/lib/apiClient"
+import { ApiError, getErrorMessage } from "@/lib/apiClient"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -34,13 +34,7 @@ import {
 import { createUser } from "@/services/api/users"
 import type { MemberRecord } from "@/types"
 
-const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-
-function generatePassword(): string {
-  const bytes = new Uint32Array(12)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length]).join("")
-}
+const DEFAULT_MEMBER_PASSWORD = "Pass@1234"
 
 interface PhotoPickerProps {
   label: string
@@ -155,8 +149,8 @@ export function MemberFormDialog({
   )
 
   const sections = useMemo(
-    () => resolveSections(CREATE_SECTIONS, optionSets, form),
-    [optionSets, form]
+    () => resolveSections(CREATE_SECTIONS, optionSets, form, isEditing),
+    [optionSets, form, isEditing]
   )
 
   const change = (key: string, value: string) => setForm((state) => ({ ...state, [key]: value }))
@@ -186,9 +180,7 @@ export function MemberFormDialog({
       setPhotoToRemove(null)
       toast.success(`${slot === "member" ? "Member" : "Spouse"} photo removed`)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove the photo.", {
-        description: error instanceof ApiError ? error.detail ?? undefined : undefined,
-      })
+      toast.error(getErrorMessage(error, "Could not remove the photo."))
     } finally {
       setRemovingPhoto(false)
     }
@@ -239,13 +231,21 @@ export function MemberFormDialog({
     try {
       let saved: MemberRecord
       if (editing) {
+        if (form.password && form.password.trim()) {
+          if (form.password.trim().length < 8) {
+            toast.error("Password must be at least 8 characters long")
+            setSaving(false)
+            return
+          }
+        }
         const updated = await updateMember(editing.id, toPatchInput(form, groupIds))
         saved = { ...editing, ...updated }
+        change("password", "")
         toast.success("Member updated successfully")
       } else {
         // Every member gets a login: a MEMBER account is created first, then the
         // member record is linked to it.
-        const password = generatePassword()
+        const password = DEFAULT_MEMBER_PASSWORD
         const account = await createUser({
           email: form.email.trim(),
           password,
@@ -260,7 +260,7 @@ export function MemberFormDialog({
           const approved = await setMemberStatus(saved.id, "APPROVED")
           saved = { ...saved, ...approved }
           toast.success("Member created with a MEMBER login", {
-            description: `Login: ${account.email} · Temporary password: ${password}`,
+            description: `Login: ${account.email} · Default password: ${password}`,
             duration: 15000,
           })
         } catch (approveError) {
@@ -282,10 +282,7 @@ export function MemberFormDialog({
       onOpenChange(false)
     } catch (error) {
       // the form keeps its values so the admin can correct the failure
-      const detail = error instanceof ApiError ? error.detail : null
-      toast.error(error instanceof Error ? error.message : "Could not save the member.", {
-        description: detail ?? undefined,
-      })
+      toast.error(getErrorMessage(error, "Could not save the member."))
     } finally {
       setSaving(false)
     }

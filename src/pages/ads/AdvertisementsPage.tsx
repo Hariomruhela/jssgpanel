@@ -14,6 +14,7 @@ import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatCompact, formatCurrency, formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { Advertisement } from "@/types"
 import { createAd, getAds, removeAd, updateAd, updateAdStatus, type AdInput } from "@/services/api/ads"
 
@@ -74,27 +75,42 @@ export default function AdvertisementsPage() {
       }
       ads.reload()
       setDialog({ open: false, editing: null })
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not save advertisement."))
     } finally {
       setSaving(false)
     }
   }
 
   const approve = async (a: Advertisement) => {
-    await updateAdStatus(a.id, "approved", "Rohit Shah")
-    toast.success(`${a.title} approved`)
-    ads.reload()
+    try {
+      await updateAdStatus(a.id, "approved", "Rohit Shah")
+      toast.success(`${a.title} approved`)
+      ads.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not approve advertisement."))
+    }
   }
 
   const reject = async (a: Advertisement) => {
-    await updateAdStatus(a.id, "rejected", "Rohit Shah")
-    toast.success(`${a.title} rejected`)
-    ads.reload()
+    try {
+      await updateAdStatus(a.id, "rejected", "Rohit Shah")
+      toast.success(`${a.title} rejected`)
+      ads.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not reject advertisement."))
+    }
   }
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeAd(deleting.id)
-    toast.success("Advertisement removed")
+    try {
+      await removeAd(deleting.id)
+      toast.success("Advertisement removed")
+      ads.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not remove advertisement."))
+    }
   }
 
   const columns: Column<Advertisement>[] = [

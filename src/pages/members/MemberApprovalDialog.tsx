@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -47,10 +47,7 @@ export function MemberApprovalDialog({ member, onOpenChange, onSaved }: MemberAp
       onOpenChange(false)
       onSaved(updated)
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("Could not update member approval."),
-        { description: (error instanceof ApiError ? error.detail : null) ?? undefined }
-      )
+      toast.error(getErrorMessage(error, t("Could not update member approval.")))
     } finally {
       setBusy(false)
     }

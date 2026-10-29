@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { toast } from "sonner"
 import { MapPin, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -9,6 +10,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { City } from "@/types"
 import { getCities, getGroupsByCity, updateCity } from "@/services/api/locations"
 import { getGroups } from "@/services/api/groups"
@@ -32,8 +34,11 @@ export default function LocationsPage() {
     setSaving(true)
     try {
       await updateCity(editing.id, form)
+      toast.success("Location updated successfully")
       cities.reload()
       setEditing(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not update location."))
     } finally {
       setSaving(false)
     }

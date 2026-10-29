@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/apiClient"
+import { ApiError, getErrorMessage } from "@/lib/apiClient"
 import { Landmark, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -310,9 +310,7 @@ export default function PostHoldersPage() {
       setDialog({ open: false, editing: null, seat: null })
       refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save the post holder.", {
-        description: (error instanceof ApiError ? error.detail : null) ?? undefined,
-      })
+      toast.error(getErrorMessage(error, "Could not save the post holder."))
     } finally {
       setSaving(false)
     }
@@ -332,9 +330,7 @@ export default function PostHoldersPage() {
       toast.success(`${deleting.full_name || "Post holder"} removed`)
       refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove the post holder.", {
-        description: (error instanceof ApiError ? error.detail : null) ?? undefined,
-      })
+      toast.error(getErrorMessage(error, "Could not remove the post holder."))
     }
   }
 
@@ -364,9 +360,9 @@ export default function PostHoldersPage() {
     },
     { id: "city", header: "City", cell: (t) => t.city || "—" },
     {
-      id: "contact",
-      header: "Contact",
-      cell: (t) => [t.contact_phone, t.contact_email].filter(Boolean).join(" · ") || "—",
+      id: "phone",
+      header: "Phone",
+      cell: (t) => t.contact_phone || "—",
     },
     {
       id: "actions",

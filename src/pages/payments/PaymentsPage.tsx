@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { formatCompact, formatCurrency, formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { PaymentTransaction } from "@/types"
 import {
   getCollectionSummary,
@@ -45,6 +46,8 @@ export default function PaymentsPage() {
       setRecordOpen(false)
       setPayForm({ payerName: "", groupId: "", amount: 15000, method: "UPI", remark: "Annual fee FY 2025-26" })
       summary.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not record payment."))
     } finally {
       setSaving(false)
     }
@@ -190,10 +193,14 @@ function TransactionsTab({ groupMap, onMutate }: { groupMap: Record<string, stri
 
   const doRefund = async () => {
     if (!refunding) return
-    await refundTransaction(refunding.id, "Manual refund")
-    toast.success("Payment marked as refunded")
-    txns.reload()
-    onMutate()
+    try {
+      await refundTransaction(refunding.id, "Manual refund")
+      toast.success("Payment marked as refunded")
+      txns.reload()
+      onMutate()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not refund payment."))
+    }
   }
 
   const columns: Column<PaymentTransaction>[] = [

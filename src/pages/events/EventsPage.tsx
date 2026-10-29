@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { useData } from "@/lib/useData"
 import { formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { EventRecord } from "@/types"
 import { getEventCounts, getEventTypes, listEvents, removeEvent, endTimeOf } from "@/services/api/events"
 import { EventFormDialog } from "./EventFormDialog"
@@ -82,7 +83,7 @@ export default function EventsPage() {
       toast.success("Event removed")
       refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete the event.")
+      toast.error(getErrorMessage(error, "Could not delete the event."))
     }
   }
 

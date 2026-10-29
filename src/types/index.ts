@@ -289,6 +289,7 @@ export interface MemberCreateInput {
   address_line?: string | null
   occupation_summary?: string | null
   membership_number?: string | null
+  password?: string | null
 }
 
 /**

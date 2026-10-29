@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
+import { apiRequest, getErrorMessage } from "@/lib/apiClient"
 import { useLanguage } from "@/lib/language"
 
 interface FormErrors {
@@ -77,15 +78,22 @@ export default function SignupPage() {
 
     setLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 900))
+      await apiRequest("/auth/register", {
+        method: "POST",
+        body: {
+          full_name: fullName.trim(),
+          email: email.trim() || null,
+          phone_number: phone.replace(/\D/g, ""),
+          password,
+          confirm_password: confirmPassword,
+        },
+      })
       toast.success(t("Account created"), {
         description: t("Signup successful! You can now log in"),
       })
       navigate("/login", { replace: true })
-    } catch {
-      toast.error(t("Signup failed"), {
-        description: t("Something went wrong, please try again"),
-      })
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("Signup failed. Please try again.")))
     } finally {
       setLoading(false)
     }

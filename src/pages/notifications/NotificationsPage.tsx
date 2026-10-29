@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { formatDate, safePercent } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { Notification } from "@/types"
 import { getNotifications, removeNotification, sendNotification, type NotificationInput } from "@/services/api/notifications"
 import { getGroups } from "@/services/api/groups"
@@ -60,6 +61,8 @@ export default function NotificationsPage() {
       toast.success("Notification sent")
       setForm({ title: "", message: "", type: "info", audience: "All Groups", groups: [], status: "sent" })
       notifications.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not send notification."))
     } finally {
       setSending(false)
     }
@@ -67,8 +70,13 @@ export default function NotificationsPage() {
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeNotification(deleting.id)
-    toast.success("Notification removed")
+    try {
+      await removeNotification(deleting.id)
+      toast.success("Notification removed")
+      notifications.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not remove notification."))
+    }
   }
 
   const columns: Column<Notification>[] = [

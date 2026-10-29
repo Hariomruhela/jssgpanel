@@ -1,9 +1,46 @@
+import { useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DateInput } from "@/components/DateInput"
 import type { FieldSection, MemberFormState } from "./memberFormFields"
+
+function PasswordFieldInput({
+  value,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  value: string
+  placeholder?: string
+  disabled?: boolean
+  onChange: (value: string) => void
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative">
+      <Input
+        type={show ? "text" : "password"}
+        value={value}
+        disabled={disabled}
+        placeholder={placeholder ?? "Enter new password to change it"}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-10"
+        autoComplete="new-password"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((prev) => !prev)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  )
+}
 
 interface MemberFieldGridProps {
   sections: FieldSection<string>[]
@@ -70,6 +107,10 @@ export function MemberFieldGrid({ sections, values, onChange, disabled = false }
               }
 
               if (field.type === "date") {
+                const isDob =
+                  field.key.includes("dob") ||
+                  field.key.includes("date_of_birth") ||
+                  field.key.includes("anniversary")
                 return (
                   <FormField
                     key={field.key}
@@ -78,7 +119,31 @@ export function MemberFieldGrid({ sections, values, onChange, disabled = false }
                     hint={field.hint}
                     className={gridClass}
                   >
-                    <DateInput value={value} disabled={disabled} onChange={(v) => onChange(field.key, v)} />
+                    <DateInput
+                      value={value}
+                      disabled={disabled}
+                      isDob={isDob}
+                      onChange={(v) => onChange(field.key, v)}
+                    />
+                  </FormField>
+                )
+              }
+
+              if (field.type === "password") {
+                return (
+                  <FormField
+                    key={field.key}
+                    label={field.label}
+                    required={field.required}
+                    hint={field.hint}
+                    className={gridClass}
+                  >
+                    <PasswordFieldInput
+                      value={value}
+                      disabled={disabled}
+                      placeholder={field.placeholder}
+                      onChange={(v) => onChange(field.key, v)}
+                    />
                   </FormField>
                 )
               }

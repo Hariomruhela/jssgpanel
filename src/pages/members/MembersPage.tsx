@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import {
   BadgeCheck,
   Eye,
@@ -123,9 +123,7 @@ export default function MembersPage() {
       setDeleting(null)
       refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("Could not delete the member."), {
-        description: (error instanceof ApiError ? error.detail : null) ?? undefined,
-      })
+      toast.error(getErrorMessage(error, t("Could not delete the member.")))
     } finally {
       setBusy(false)
     }

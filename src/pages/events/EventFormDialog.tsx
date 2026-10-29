@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -90,8 +90,7 @@ function emptyForm(): FormState {
 }
 
 function errorMessage(error: unknown, fallback: string): { message: string; description?: string } {
-  if (error instanceof ApiError) return { message: error.message, description: error.detail ?? undefined }
-  return { message: error instanceof Error ? error.message : fallback }
+  return { message: getErrorMessage(error, fallback) }
 }
 
 /** The API accepts 7 to 15 digits, with the usual separators left out. */

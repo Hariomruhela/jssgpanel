@@ -36,10 +36,11 @@ interface GroupMembersInlineProps {
 }
 
 function fromGroupMember(member: GroupMember): GroupDirectoryMember {
+  const phone = member.contact_phone || (member as any).phone_number || ""
   return {
     id: member.id,
     name: member.full_name,
-    subtitle: member.membership_number || member.contact_phone || member.contact_email || "",
+    subtitle: phone.trim(),
     photo: member.profile_photo_url || null,
   }
 }
@@ -47,16 +48,11 @@ function fromGroupMember(member: GroupMember): GroupDirectoryMember {
 function fromMember(member: MemberRecord): GroupDirectoryMember {
   const name =
     member.full_name || [member.first_name, member.last_name].filter(Boolean).join(" ")
+  const phone = member.phone_number || member.contact_phone || member.spouse_mobile || ""
   return {
     id: member.id,
     name,
-    subtitle:
-      member.membership_number ||
-      member.phone_number ||
-      member.contact_phone ||
-      member.contact_email ||
-      member.email ||
-      "",
+    subtitle: phone.trim(),
     photo: member.profile_photo_url || member.member_photo_link || null,
   }
 }
@@ -101,15 +97,19 @@ export function GroupMembersInline({
         )}
       </div>
 
-      {admins.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1 font-medium text-foreground">
-            <ShieldCheck className="size-3.5 text-primary" />
-            {t("Group admins")}
-          </span>
-          <span>{admins.map((admin) => h(admin.full_name)).join(", ")}</span>
-        </div>
-      )}
+      {(() => {
+        const fromGroup: any[] = admins ?? []
+        if (fromGroup.length === 0) return null
+        return (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 font-medium text-foreground">
+              <ShieldCheck className="size-3.5 text-primary" />
+              {t("Group admins")}
+            </span>
+            <span>{fromGroup.map((admin: any) => h(admin.full_name)).join(", ")}</span>
+          </div>
+        )
+      })()}
 
       {!groupId && (
         <p className="text-xs text-muted-foreground">

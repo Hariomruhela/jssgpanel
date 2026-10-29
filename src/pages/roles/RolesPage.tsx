@@ -18,6 +18,7 @@ import { FormField } from "@/components/FormField"
 import { useData } from "@/lib/useData"
 import { cn } from "@/lib/utils"
 import { formatDate, formatDateTime, initials } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { AdminUser, PermissionKey, Role } from "@/types"
 import { getRoles, updateRolePermissions, getAdminUsers, createAdminUser, removeAdminUser } from "@/services/api/roles"
 
@@ -120,6 +121,9 @@ function PermissionMatrix({ role, onChanged }: { role: Role; onChanged: () => vo
     try {
       await updateRolePermissions(role.id, next)
       onChanged()
+    } catch (error) {
+      setLocal(local)
+      toast.error(getErrorMessage(error, "Could not update role permissions."))
     } finally {
       setBusy(false)
     }
@@ -183,6 +187,8 @@ function AdminUsersTab({ roles, onChanged }: { roles: Role[]; onChanged: () => v
       setForm({ name: "", email: "", roleId: "role-group", status: "active" })
       users.reload()
       onChanged()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not add admin user."))
     } finally {
       setSaving(false)
     }
@@ -190,10 +196,14 @@ function AdminUsersTab({ roles, onChanged }: { roles: Role[]; onChanged: () => v
 
   const confirmDelete = async () => {
     if (!deleting) return
-    await removeAdminUser(deleting.id)
-    toast.success(`${deleting.name} removed`)
-    users.reload()
-    onChanged()
+    try {
+      await removeAdminUser(deleting.id)
+      toast.success(`${deleting.name} removed`)
+      users.reload()
+      onChanged()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not remove admin user."))
+    }
   }
 
   const columns: Column<AdminUser>[] = [

@@ -9,6 +9,7 @@ import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth"
+import { getErrorMessage } from "@/lib/apiClient"
 import { useLanguage } from "@/lib/language"
 import { NotAdminError, isPhoneIdentifier } from "@/services/api/session"
 
@@ -61,9 +62,7 @@ export default function LoginPage() {
       if (error instanceof NotAdminError) {
         toast.error(error.message)
       } else {
-        toast.error(t("Login failed"), {
-          description: error instanceof Error ? error.message : t("Could not reach the JSSG API."),
-        })
+        toast.error(getErrorMessage(error, t("Could not reach the JSSG API.")))
       }
     } finally {
       setLoading(false)

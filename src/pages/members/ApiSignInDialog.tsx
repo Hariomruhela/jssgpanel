@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
 import { NotAdminError, isPhoneIdentifier } from "@/services/api/session"
+import { getErrorMessage } from "@/lib/apiClient"
 import { useAuth } from "@/lib/auth"
 import { useLanguage } from "@/lib/language"
 
@@ -37,9 +38,7 @@ export function ApiSignInDialog({ open, onOpenChange, onSignedIn }: ApiSignInDia
       if (error instanceof NotAdminError) {
         toast.error(error.message)
       } else {
-        toast.error(error instanceof Error ? error.message : t("Could not sign in."), {
-          description: t("Use an admin account and password from the JSSG API."),
-        })
+        toast.error(getErrorMessage(error, t("Could not sign in.")))
       }
     } finally {
       setBusy(false)

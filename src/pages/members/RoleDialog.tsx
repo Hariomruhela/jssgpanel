@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
 import { Info, Loader2 } from "lucide-react"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import {
   Dialog,
   DialogContent,
@@ -61,11 +61,7 @@ export function RoleDialog({ member, onOpenChange, onSaved }: RoleDialogProps) {
       onSaved()
       onOpenChange(false)
     } catch (error) {
-      if (error instanceof ApiError) {
-        toast.error(error.message, { description: error.detail ?? undefined })
-      } else {
-        toast.error(error instanceof Error ? error.message : "Could not change the role.")
-      }
+      toast.error(getErrorMessage(error, "Could not change the role."))
     } finally {
       setSaving(false)
     }

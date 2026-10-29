@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Loader2, Search, ShieldCheck, ShieldPlus, UserPlus, X } from "lucide-react"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,10 +36,7 @@ interface GroupMembersDialogProps {
 }
 
 function describeError(error: unknown, fallback: string): { message: string; description?: string } {
-  if (error instanceof ApiError) {
-    return { message: error.message, description: error.detail ?? undefined }
-  }
-  return { message: error instanceof Error ? error.message : fallback }
+  return { message: getErrorMessage(error, fallback) }
 }
 
 function memberPhoto(member: GroupMember | MemberRecord): string | null {
@@ -47,14 +44,14 @@ function memberPhoto(member: GroupMember | MemberRecord): string | null {
 }
 
 function memberSubtitle(member: GroupMember | MemberRecord): string {
-  return (
-    member.membership_number ||
-    ("phone_number" in member ? member.phone_number : null) ||
-    member.contact_phone ||
-    ("email" in member ? member.email : null) ||
-    member.contact_email ||
-    "—"
-  )
+  const phone =
+    ("phone_number" in member && member.phone_number) ||
+    ("contact_phone" in member && member.contact_phone) ||
+    null
+  if (typeof phone === "string" && phone.trim()) {
+    return phone.trim()
+  }
+  return "—"
 }
 
 export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMembersDialogProps) {
@@ -138,8 +135,13 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
     }
   }
 
-  const isAdmin = (member: GroupMember | MemberRecord) =>
-    !!member.user_id && admins.some((admin) => admin.id === member.user_id)
+  const isAdmin = (member: GroupMember | MemberRecord) => {
+    const userId = (member as any).user_id
+    if (userId) {
+      return effectiveAdmins.some((admin: any) => admin.id === userId)
+    }
+    return effectiveAdmins.some((admin: any) => admin.id === (member as any).id)
+  }
 
   const makeAdmin = async (member: GroupMember | MemberRecord) => {
     if (!group) return
@@ -198,6 +200,17 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
         ...groupMembers.filter((gm) => !directoryMembers.some((dm) => dm.id === gm.id)),
       ]
 
+  const effectiveAdmins = useMemo(() => {
+    const fromGroup: any[] = ((group as any)?.admins ?? admins ?? []) as any[]
+    const map = new Map<string, any>()
+    for (const a of fromGroup) {
+      if (a?.id) {
+        map.set(a.id, { ...a })
+      }
+    }
+    return Array.from(map.values())
+  }, [group, admins])
+
   const selectable = listedMembers.filter((member) => !inGroup.has(member.id))
   const allSelected = selectable.length > 0 && selectable.every((member) => selected.has(member.id))
 
@@ -240,41 +253,41 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
                     Group admins
                   </h4>
                   <span className="text-xs text-muted-foreground">
-                    {admins.length} admin{admins.length === 1 ? "" : "s"}
+                    {effectiveAdmins.length} admin{effectiveAdmins.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
-                {admins.length === 0 ? (
+                {effectiveAdmins.length === 0 ? (
                   <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
                     No group admins yet — make a member an admin from the list below.
                   </p>
                 ) : (
                   <ul className="divide-y rounded-xl border">
-                    {admins.map((admin) => (
-                      <li key={admin.id} className="flex items-center gap-2.5 px-3 py-2">
-                        <Avatar size="sm">
-                          <AvatarFallback>{initials(admin.full_name) || "?"}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1 leading-tight">
-                          <p className="truncate font-medium">{h(admin.full_name)}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {admin.phone_number || admin.email || "—"}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          className="text-destructive hover:text-destructive"
-                          disabled={adminBusyId === admin.id}
-                          onClick={() => revokeAdmin(admin)}
-                          aria-label={`Remove ${admin.full_name} as admin`}
-                          title="Remove as group admin"
-                        >
-                          {adminBusyId === admin.id ? <Loader2 className="animate-spin" /> : <X />}
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
+                    {effectiveAdmins.map((admin) => (
+                        <li key={admin.id} className="flex items-center gap-2.5 px-3 py-2">
+                          <Avatar size="sm">
+                            <AvatarFallback>{initials(admin.full_name) || "?"}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1 leading-tight">
+                            <p className="truncate font-medium">{h(admin.full_name)}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {admin.phone_number || admin.email || "—"}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-destructive hover:text-destructive"
+                            disabled={adminBusyId === admin.id}
+                            onClick={() => revokeAdmin(admin)}
+                            aria-label={`Remove ${admin.full_name} as admin`}
+                            title="Remove as group admin"
+                          >
+                            {adminBusyId === admin.id ? <Loader2 className="animate-spin" /> : <X />}
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
                 )}
               </div>
 
@@ -322,18 +335,20 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
                           <AvatarFallback>{initials(member.full_name) || "?"}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1 leading-tight">
-                          <p className="truncate font-medium">{h(member.full_name)}</p>
+                          <p className="truncate font-medium flex items-center gap-1.5">
+                            {h(member.full_name)}
+                            {isAdmin(member) && (
+                              <Badge variant="secondary" className="gap-1">
+                                <ShieldCheck className="size-3" />
+                                Group Admin
+                              </Badge>
+                            )}
+                          </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {memberSubtitle(member)}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
-                          {isAdmin(member) && (
-                            <Badge variant="secondary" className="gap-1">
-                              <ShieldCheck className="size-3" />
-                              Admin
-                            </Badge>
-                          )}
                           {inGroup.has(member.id) && !isAdmin(member) && (
                             <Button
                               variant="ghost"

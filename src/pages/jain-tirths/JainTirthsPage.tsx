@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { useData } from "@/lib/useData"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { JainTirthRecord } from "@/types"
 import { getJainTirthCounts, listJainTirths, removeJainTirth } from "@/services/api/jainTirths"
 import { JainTirthFormDialog } from "./JainTirthFormDialog"
@@ -67,7 +68,7 @@ export default function JainTirthsPage() {
       toast.success("Jain Tirth removed")
       refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete the Jain Tirth.")
+      toast.error(getErrorMessage(error, "Could not delete the Jain Tirth."))
     }
   }
 

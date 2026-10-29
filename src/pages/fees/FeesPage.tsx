@@ -14,6 +14,7 @@ import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
 import { formatCompact, formatCurrency, formatDate } from "@/lib/format"
+import { getErrorMessage } from "@/lib/apiClient"
 import type { FeeConfig } from "@/types"
 import { applyFeeToAll, getFeeConfigs, updateFeeConfig } from "@/services/api/fees"
 import { getGroups } from "@/services/api/groups"
@@ -46,6 +47,8 @@ export default function FeesPage() {
       fees.reload()
       summary.reload()
       setEditing(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not update fee configuration."))
     } finally {
       setSaving(false)
     }
@@ -58,6 +61,8 @@ export default function FeesPage() {
       toast.success("Fee configuration applied to all groups")
       fees.reload()
       summary.reload()
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not apply fee configuration."))
     } finally {
       setBulkSaving(false)
     }

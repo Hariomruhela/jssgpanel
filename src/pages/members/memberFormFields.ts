@@ -55,8 +55,9 @@ export type MemberFieldKey =
   | "city"
   | "area"
   | "address_line"
+  | "password"
 
-export type FieldType = "text" | "email" | "tel" | "url" | "date" | "number" | "textarea" | "select"
+export type FieldType = "text" | "email" | "tel" | "url" | "date" | "number" | "textarea" | "select" | "password"
 
 export interface FieldSpec<K extends string = MemberFieldKey> {
   key: K
@@ -195,6 +196,7 @@ export function emptyMemberForm(): MemberFormState {
   for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) state[field.key] = ""
   }
+  state.password = ""
   return state
 }
 
@@ -208,10 +210,15 @@ export function memberToFormState(member: MemberRecord): MemberFormState {
   const state = emptyMemberForm()
   for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {
+      if (field.key === "password") {
+        state.password = ""
+        continue
+      }
       const value = member[field.key]
       state[field.key] = value === null || value === undefined ? "" : String(value)
     }
   }
+  state.password = ""
   return state
 }
 
@@ -219,18 +226,36 @@ export function memberToFormState(member: MemberRecord): MemberFormState {
 export function resolveSections<K extends string>(
   sections: FieldSection<K>[],
   options: Record<MemberOptionSource, MemberOption[]>,
-  values: MemberFormState
+  values: MemberFormState,
+  isEditing?: boolean
 ): FieldSection<string>[] {
-  return sections.map((section) => ({
-    id: section.id,
-    label: section.label,
-    fields: section.fields.map((field) => {
-      const base = field.optionsSource ? options[field.optionsSource] : field.options
-      const current = values[field.key as MemberFieldKey]
-      const resolved = current && !base?.some((o) => o.value === current) ? [...(base ?? []), { label: current, value: current }] : base
-      return { ...field, options: resolved }
-    }),
-  }))
+  return sections.map((section) => {
+    let fields = section.fields
+    if (isEditing && section.id === "contact") {
+      if (!fields.some((f) => f.key === "password")) {
+        fields = [
+          ...fields,
+          {
+            key: "password" as K,
+            label: "Password",
+            type: "password" as FieldType,
+            placeholder: "Enter new password to change it",
+            hint: "Leave empty to keep existing password unchanged",
+          },
+        ]
+      }
+    }
+    return {
+      id: section.id,
+      label: section.label,
+      fields: fields.map((field) => {
+        const base = field.optionsSource ? options[field.optionsSource] : field.options
+        const current = values[field.key as MemberFieldKey]
+        const resolved = current && !base?.some((o) => o.value === current) ? [...(base ?? []), { label: current, value: current }] : base
+        return { ...field, options: resolved }
+      }),
+    }
+  })
 }
 
 function toNullable(state: MemberFormState, key: MemberFieldKey): string | null {
@@ -269,8 +294,12 @@ export function toPatchInput(state: MemberFormState, groupIds: string[]): Member
   const target = input as Record<string, string | null>
   for (const section of TRACKED_SECTIONS) {
     for (const field of section.fields) {
+      if (field.key === "password") continue
       target[field.key] = toNullable(state, field.key)
     }
+  }
+  if (state.password && state.password.trim()) {
+    input.password = state.password.trim()
   }
   return input
 }

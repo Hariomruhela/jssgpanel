@@ -12,7 +12,7 @@ import {
   Upload,
   UserPlus,
 } from "lucide-react"
-import { ApiError } from "@/lib/apiClient"
+import { getErrorMessage } from "@/lib/apiClient"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -85,8 +85,7 @@ interface DirectoryGroup {
 }
 
 function errorMessage(error: unknown, fallback: string): { message: string; description?: string } {
-  if (error instanceof ApiError) return { message: error.message, description: error.detail ?? undefined }
-  return { message: error instanceof Error ? error.message : fallback }
+  return { message: getErrorMessage(error, fallback) }
 }
 
 /**
