@@ -64,8 +64,8 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Finance",
     items: [
-      { title: "Annual Fee Management", path: "/admin/fees", icon: IndianRupee },
-      // { title: "Payment Module", path: "/admin/payments", icon: CreditCard },
+      // { title: "Annual Fee Management", path: "/admin/fees", icon: IndianRupee },
+      { title: "Payment Module", path: "/admin/payments", icon: IndianRupee },
       // { title: "Payment Reports", path: "/admin/payment-reports", icon: ReceiptText },
     ],
   },
