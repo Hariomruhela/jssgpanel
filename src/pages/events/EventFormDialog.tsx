@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
+import { ChevronsUpDown, ImageIcon, Loader2, Trash2, Upload, X } from "lucide-react"
 import { getErrorMessage } from "@/lib/apiClient"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import {
   Dialog,
   DialogContent,
@@ -12,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField } from "@/components/FormField"
@@ -35,6 +45,114 @@ import {
   uploadEventCover,
   uploadEventImages,
 } from "@/services/api/events"
+import { getAllGroups } from "@/services/api/groups"
+import { getStoredUser, isGroupAdminRole } from "@/services/api/session"
+
+interface GroupOption {
+  id: string
+  name: string
+}
+
+interface GroupMultiSelectProps {
+  options: GroupOption[]
+  value: string[]
+  onChange: (groupId: string) => void
+  onSelectAll: (selected: boolean) => void
+  disabled?: boolean
+  loading?: boolean
+}
+
+/** A searchable dropdown where each option has a checkbox and stays open. */
+function GroupMultiSelect({
+  options,
+  value,
+  onChange,
+  onSelectAll,
+  disabled = false,
+  loading = false,
+}: GroupMultiSelectProps) {
+  const [open, setOpen] = useState(false)
+  const selected = options.filter((option) => value.includes(option.id))
+  const allSelected = options.length > 0 && selected.length === options.length
+  const someSelected = selected.length > 0 && !allSelected
+  const label =
+    selected.length === 0
+      ? "Select groups"
+      : `${selected.length} ${selected.length === 1 ? "group" : "groups"} selected`
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!disabled) setOpen(next)
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled || loading}
+          className="w-full justify-between font-normal"
+        >
+          <span className={selected.length === 0 ? "truncate text-muted-foreground" : "truncate"}>
+            {loading ? "Loading groups…" : label}
+          </span>
+          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="z-[100] w-[var(--radix-popover-trigger-width)] max-h-[min(40vh,280px)] overflow-hidden p-0"
+        align="start"
+        sideOffset={4}
+        collisionPadding={8}
+      >
+        <Command>
+          <CommandInput placeholder="Search groups…" />
+          <div className="border-b p-1">
+            <button
+              type="button"
+              onClick={() => onSelectAll(!allSelected)}
+              disabled={disabled || loading || options.length === 0}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Checkbox
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                tabIndex={-1}
+                className="pointer-events-none"
+              />
+              <span>Select all</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {selected.length} of {options.length} selected
+              </span>
+            </button>
+          </div>
+          <CommandList className="max-h-[min(40vh,240px)] overflow-y-auto">
+            <CommandEmpty>No groups found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.id}
+                  value={`${option.name} ${option.id}`}
+                  onSelect={() => onChange(option.id)}
+                  className="gap-2"
+                >
+                  <Checkbox
+                    checked={value.includes(option.id)}
+                    tabIndex={-1}
+                    className="pointer-events-none"
+                  />
+                  <span className="truncate">{option.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 interface EventFormDialogProps {
   open: boolean
@@ -61,6 +179,7 @@ interface FormState {
   eventTypeOther: string
   hostName: string
   hostContact: string
+  groupIds: string[]
 }
 
 /** A picked file together with the object URL showing it. */
@@ -86,6 +205,7 @@ function emptyForm(): FormState {
     eventTypeOther: "",
     hostName: "",
     hostContact: "",
+    groupIds: [],
   }
 }
 
@@ -103,6 +223,10 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
   const [form, setForm] = useState<FormState>(() => emptyForm())
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [groups, setGroups] = useState<GroupOption[]>([])
+  const [groupsLoading, setGroupsLoading] = useState(false)
+  const currentUser = useMemo(() => getStoredUser(), [])
+  const lockedGroupId = isGroupAdminRole(currentUser) ? currentUser?.group_id ?? null : null
 
   // The cover image: the picked file, its preview and the URL already stored.
   const [coverFile, setCoverFile] = useState<PickedImage | null>(null)
@@ -139,6 +263,68 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
     setForm((s) => ({ ...s, [key]: value }))
   }, [])
 
+  // Group Admins are fixed to their own group; Super Admins may pick several.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setGroupsLoading(true)
+    getAllGroups()
+      .then((rows) => {
+        if (cancelled) return
+        setGroups(
+          rows
+            .filter((group) => group.id && group.name)
+            .map((group) => ({ id: group.id, name: group.name }))
+        )
+      })
+      .catch((error) => {
+        const { message, description } = errorMessage(error, "Could not load groups.")
+        toast.error(message, { description })
+      })
+      .finally(() => {
+        if (!cancelled) setGroupsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const groupOptions = useMemo(() => {
+    if (!lockedGroupId) return groups
+    if (groups.some((group) => group.id === lockedGroupId)) return groups
+    return [
+      {
+        id: lockedGroupId,
+        name: currentUser?.group_name?.trim() || "Your group",
+      },
+      ...groups,
+    ]
+  }, [groups, lockedGroupId, currentUser])
+
+  const toggleGroup = useCallback(
+    (groupId: string) => {
+      if (lockedGroupId) return
+      setForm((current) => ({
+        ...current,
+        groupIds: current.groupIds.includes(groupId)
+          ? current.groupIds.filter((id) => id !== groupId)
+          : [...current.groupIds, groupId],
+      }))
+    },
+    [lockedGroupId]
+  )
+
+  const toggleAllGroups = useCallback(
+    (selected: boolean) => {
+      if (lockedGroupId) return
+      setForm((current) => ({
+        ...current,
+        groupIds: selected ? groupOptions.map((group) => group.id) : [],
+      }))
+    },
+    [groupOptions, lockedGroupId]
+  )
+
   // Load the event and its gallery whenever the dialog opens for an edit.
   useEffect(() => {
     if (!open) return
@@ -148,7 +334,10 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
     setPicked([])
     setCoverFile(null)
     if (!editing) {
-      setForm(emptyForm())
+      setForm({
+        ...emptyForm(),
+        groupIds: lockedGroupId ? [lockedGroupId] : [],
+      })
       setImages([])
       setCoverUrl(null)
       return
@@ -172,6 +361,13 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
           eventTypeOther: detail.event_type_other ?? "",
           hostName: detail.host_name ?? "",
           hostContact: detail.host_contact_number ?? "",
+          groupIds: lockedGroupId
+            ? [lockedGroupId]
+            : detail.group_ids?.length
+              ? detail.group_ids
+              : detail.group_id
+                ? [detail.group_id]
+                : [],
         })
         setImages(detail.images ?? [])
         setCoverUrl(detail.cover_image_url ?? null)
@@ -181,7 +377,7 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
         toast.error(message, { description })
       })
       .finally(() => setLoading(false))
-  }, [open, editing])
+  }, [open, editing, lockedGroupId])
 
   const pickCover = (file: File | null | undefined) => {
     if (!file) return
@@ -272,6 +468,7 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
       return "Please name the event type."
     }
     if (!isValidPhone(form.hostContact)) return "The host mobile number is not a valid phone number."
+    if (form.groupIds.length === 0) return "Select at least one group for the event."
     return null
   }
 
@@ -293,6 +490,11 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
         event_type_other: form.eventType === "OTHER" ? form.eventTypeOther.trim() : null,
         host_name: form.hostName.trim() || null,
         host_contact_number: form.hostContact.trim() || null,
+        // A Group Admin editing a shared event must not strip the other groups;
+        // the field is locked, so leaving the selection out keeps it unchanged.
+        ...(lockedGroupId && editing
+          ? {}
+          : { group_id: form.groupIds[0] ?? null, group_ids: form.groupIds }),
         starts_at: toStartsAt(form.eventDate, form.startTime),
         ends_at: toEndsAt(form.eventDate, form.endTime),
       }
@@ -419,6 +621,26 @@ export function EventFormDialog({ open, editing, eventTypes, onOpenChange, onSav
                 />
               </FormField>
             )}
+
+            <FormField
+              label="Select groups"
+              required
+              className="sm:col-span-2"
+              hint={
+                lockedGroupId
+                  ? "Group Admins can only create and edit events for their own group."
+                  : "Members of the selected groups can see this event."
+              }
+            >
+              <GroupMultiSelect
+                options={groupOptions}
+                value={form.groupIds}
+                onChange={toggleGroup}
+                onSelectAll={toggleAllGroups}
+                disabled={Boolean(lockedGroupId)}
+                loading={groupsLoading}
+              />
+            </FormField>
 
             <FormField label="Host name">
               <Input

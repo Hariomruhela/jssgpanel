@@ -20,6 +20,7 @@ const JainTirthsPage = lazy(() => import("@/pages/jain-tirths/JainTirthsPage"))
 const NewsPage = lazy(() => import("@/pages/news/NewsPage"))
 const NotificationsPage = lazy(() => import("@/pages/notifications/NotificationsPage"))
 const AdvertisementsPage = lazy(() => import("@/pages/ads/AdvertisementsPage"))
+const CreateAdvertisementPage = lazy(() => import("@/pages/ads/CreateAdvertisementPage"))
 const RolesPage = lazy(() => import("@/pages/roles/RolesPage"))
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"))
 const FeesPage = lazy(() => import("@/pages/fees/FeesPage"))
@@ -40,6 +41,7 @@ const ADMIN_PAGES: Record<string, React.ComponentType> = {
   news: NewsPage,
   notifications: NotificationsPage,
   advertisements: AdvertisementsPage,
+  "advertisements/create": CreateAdvertisementPage,
   roles: RolesPage,
   reports: ReportsPage,
   fees: FeesPage,

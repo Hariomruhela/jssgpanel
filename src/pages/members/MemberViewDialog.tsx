@@ -139,6 +139,13 @@ export function MemberViewDialog({ member, onOpenChange, onEdit }: MemberViewDia
     const groupInfo: DetailItem[] = []
     const groups = groupNames(member)
     if (hasValue(groups)) groupInfo.push({ label: "Social Groups", value: groups, wide: true })
+    if (hasValue(member.social_group_association_name)) {
+      groupInfo.push({
+        label: "Social Group Association",
+        value: member.social_group_association_name,
+        wide: true,
+      })
+    }
 
     // 4. Spouse Details
     const spouseDetails: DetailItem[] = []

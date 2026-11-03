@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth"
 import { getErrorMessage } from "@/lib/apiClient"
 import { useLanguage } from "@/lib/language"
-import { NotAdminError, isPhoneIdentifier } from "@/services/api/session"
+import { NotAdminError, isGroupAdminRole, isPhoneIdentifier } from "@/services/api/session"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -55,8 +55,13 @@ export default function LoginPage() {
       toast.success(t("Logged in successfully"), {
         description: t("Signed in as {name}", { name: user.full_name }),
       })
-      // the panel is only reachable under /admin, so never bounce back to a rejected path
-      const target = requestedPath?.startsWith("/admin") ? requestedPath : "/admin/dashboard"
+      // Group Admins only have Advertisement Management; Super Admins keep the
+      // requested panel page (or the dashboard by default).
+      const target = isGroupAdminRole(user)
+        ? "/admin/advertisements"
+        : requestedPath?.startsWith("/admin")
+          ? requestedPath
+          : "/admin/dashboard"
       navigate(target, { replace: true })
     } catch (error) {
       if (error instanceof NotAdminError) {

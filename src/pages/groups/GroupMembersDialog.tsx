@@ -22,6 +22,7 @@ import type { GroupAdmin, GroupMember, GroupRecord, MemberRecord } from "@/types
 import {
   addGroupAdmin,
   addGroupMember,
+  getGroupAdmins,
   getGroupMembers,
   removeGroupAdmin,
   removeGroupMember,
@@ -62,12 +63,29 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null)
   const [memberAdminBusyId, setMemberAdminBusyId] = useState<string | null>(null)
   // The dialog remounts per group (the parent keys it), so this starts from the
-  // group's admins and is kept in sync as admins are added or removed.
+  // group's admins and is kept in sync as admins are added, removed, or re-fetched.
   const [admins, setAdmins] = useState<GroupAdmin[]>(() => group?.admins ?? [])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [addingBulk, setAddingBulk] = useState(false)
   const [searchInput, setSearchInput] = useState("")
   const [query, setQuery] = useState("")
+
+  const remoteAdmins = useData(
+    useCallback(
+      () =>
+        groupId
+          ? getGroupAdmins(groupId).catch(() => [] as GroupAdmin[])
+          : Promise.resolve([] as GroupAdmin[]),
+      [groupId]
+    ),
+    version
+  )
+
+  useEffect(() => {
+    if (remoteAdmins.data) {
+      setAdmins(remoteAdmins.data)
+    }
+  }, [remoteAdmins.data])
 
   const members = useData(
     useCallback(() => getGroupMembers(groupId, { pageSize: 100 }), [groupId]),
@@ -143,6 +161,15 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
     return effectiveAdmins.some((admin: any) => admin.id === (member as any).id)
   }
 
+  const memberRole = (member: GroupMember | MemberRecord): string | null => {
+    const directRole = (member as any).role || (member as any).role_name
+    if (directRole) return directRole
+    const userRole = (member as any).user?.role?.name
+    if (userRole) return userRole
+    if (isAdmin(member)) return "GROUP_ADMIN"
+    return null
+  }
+
   const makeAdmin = async (member: GroupMember | MemberRecord) => {
     if (!group) return
     setMemberAdminBusyId(member.id)
@@ -201,15 +228,17 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
       ]
 
   const effectiveAdmins = useMemo(() => {
-    const fromGroup: any[] = ((group as any)?.admins ?? admins ?? []) as any[]
+    const fromApi = remoteAdmins.data ?? []
+    const sourceList =
+      fromApi.length > 0 ? fromApi : admins.length > 0 ? admins : ((group as any)?.admins ?? [])
     const map = new Map<string, any>()
-    for (const a of fromGroup) {
+    for (const a of sourceList) {
       if (a?.id) {
         map.set(a.id, { ...a })
       }
     }
     return Array.from(map.values())
-  }, [group, admins])
+  }, [remoteAdmins.data, admins, group])
 
   const selectable = listedMembers.filter((member) => !inGroup.has(member.id))
   const allSelected = selectable.length > 0 && selectable.every((member) => selected.has(member.id))
@@ -337,12 +366,26 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
                         <div className="min-w-0 flex-1 leading-tight">
                           <p className="truncate font-medium flex items-center gap-1.5">
                             {h(member.full_name)}
-                            {isAdmin(member) && (
-                              <Badge variant="secondary" className="gap-1">
-                                <ShieldCheck className="size-3" />
-                                Group Admin
-                              </Badge>
-                            )}
+                            {(() => {
+                              const role = memberRole(member)
+                              if (role === "SUPER_ADMIN") {
+                                return (
+                                  <Badge variant="default" className="gap-1 bg-amber-600 text-white hover:bg-amber-600">
+                                    <ShieldCheck className="size-3" />
+                                    Super Admin
+                                  </Badge>
+                                )
+                              }
+                              if (role === "GROUP_ADMIN" || isAdmin(member)) {
+                                return (
+                                  <Badge variant="secondary" className="gap-1">
+                                    <ShieldCheck className="size-3" />
+                                    Group Admin
+                                  </Badge>
+                                )
+                              }
+                              return null
+                            })()}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {memberSubtitle(member)}

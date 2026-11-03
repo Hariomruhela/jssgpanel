@@ -35,22 +35,37 @@ export function isPhoneIdentifier(identifier: string): boolean {
 }
 
 /**
- * Roles allowed into the Admin Panel: the platform-wide admin tier only. This
- * mirrors the backend's unrestricted (non-group-scoped) roles in
- * `app/core/scope.py`. `REGIONAL_ADMIN`/`GROUP_ADMIN` are deliberately excluded —
- * they only have member CRUD scoped to their own group, so they must not reach the
- * whole panel. `MEMBER` is rejected.
+ * Roles allowed into the Admin Panel. Super Admins get the full panel; Group
+ * Admins may sign in but are restricted to Advertisement Management for their own
+ * group (the backend scopes every request to that group). `MEMBER` is rejected.
  *
  * The label is normalised (trimmed, case-folded) because production role rows were
  * imported from Excel/Google Sheets and some were stored as `"Admin\n"`; the
  * backend resolves the same label to the same canonical role.
  */
-const ADMIN_PANEL_ROLES = new Set(["admin", "super_admin", "federation_admin"])
+const SUPER_ADMIN_ROLES = new Set(["admin", "super_admin", "federation_admin"])
+const GROUP_ADMIN_ROLES = new Set(["group_admin"])
+const ADMIN_PANEL_ROLES = new Set([...SUPER_ADMIN_ROLES, ...GROUP_ADMIN_ROLES])
+
+function normalisedRole(user: Pick<UserAccount, "role"> | null | undefined): string {
+  const role = user?.role?.name
+  return typeof role === "string" ? role.trim().toLowerCase() : ""
+}
 
 export function isAdminRole(user: Pick<UserAccount, "role"> | null | undefined): boolean {
-  const role = user?.role?.name
-  if (typeof role !== "string") return false
-  return ADMIN_PANEL_ROLES.has(role.trim().toLowerCase())
+  return ADMIN_PANEL_ROLES.has(normalisedRole(user))
+}
+
+export function isSuperAdminRole(
+  user: Pick<UserAccount, "role"> | null | undefined
+): boolean {
+  return SUPER_ADMIN_ROLES.has(normalisedRole(user))
+}
+
+export function isGroupAdminRole(
+  user: Pick<UserAccount, "role"> | null | undefined
+): boolean {
+  return GROUP_ADMIN_ROLES.has(normalisedRole(user))
 }
 
 export function isSignedIn(): boolean {

@@ -59,6 +59,8 @@ export interface UserAccount {
   is_phone_verified: boolean
   last_login_at: string | null
   role: UserRole | null
+  group_id?: string | null
+  group_name?: string | null
   created_at: string
   updated_at: string
 }
@@ -161,6 +163,7 @@ export interface MemberRecord {
   company_name: string | null
   group_designation: string | null
   social_group_name: string | null
+  social_group_association_name: string | null
   interest_fields: string | null
   business_address: string | null
   business_designation: string | null
@@ -266,6 +269,7 @@ export interface MemberCreateInput {
   company_name?: string | null
   group_designation?: string | null
   social_group_name?: string | null
+  social_group_association_name?: string | null
   interest_fields?: string | null
   business_address?: string | null
   business_designation?: string | null
@@ -502,6 +506,9 @@ export interface GroupMember {
   contact_email: string | null
   contact_phone: string | null
   profile_photo_url: string | null
+  /** Member role (e.g. SUPER_ADMIN, GROUP_ADMIN, MEMBER) */
+  role?: string | null
+  role_name?: string | null
   /** Linked login account; null for imported members with no user. */
   user_id?: string | null
 }
@@ -576,6 +583,8 @@ export interface EventRecord {
   max_attendees: number | null
   registration_required: boolean
   group_id: string | null
+  /** Every social group selected for the event (the primary group is first). */
+  group_ids?: string[]
   location_id: string | null
   /** How many gallery images the event holds. */
   image_count: number
@@ -618,6 +627,8 @@ export interface EventCreateInput {
   host_name?: string | null
   host_contact_number?: string | null
   group_id?: string | null
+  /** Social groups that may see the event. At least one is required. */
+  group_ids?: string[] | null
   /**
    * The instant the date and time refer to. The current API derives it from
    * the date and the time and ignores this; an older one only knows the
@@ -739,22 +750,123 @@ export interface Notification {
   opened: number
 }
 
+export interface SubscriptionDurationOption {
+  months: number
+  label: string
+  description: string
+  price: number
+  currency: string
+  is_default: boolean
+}
+
 export interface Advertisement {
   id: string
   title: string
-  advertiser: string
-  type: "Banner" | "Sidebar" | "Popup" | "Sponsored Post"
-  placement: string
-  mediaLabel: string
-  startDate: string
-  endDate: string
-  status: AdStatus
-  impressions: number
-  clicks: number
-  spend: number
-  submittedBy: string
-  submittedOn: string
+  person_name?: string | null
+  mobile_number?: string | null
+  description?: string | null
+  media_url?: string | null
+  media_type?: string
+  cover_image_url?: string | null
+  large_image_url?: string | null
+  amount?: number | null
+  subscription_months?: number | null
+  subscription_plan_id?: string | null
+  currency?: string | null
+  purchased_at?: string | null
+  subscription_start_date?: string | null
+  subscription_expiry_date?: string | null
+  placement?: string
+  start_date?: string | null
+  end_date?: string | null
+  target_url?: string | null
+  status: string // "APPROVED" | "PENDING" | "REJECTED" | "EXPIRED" | "active" etc.
+  is_active?: boolean
+  payment_status?: string | null
+  payment_id?: string | null
+  group_id?: string | null
+  group_name?: string | null
+  advertiser_id?: string | null
+  approved_by?: string | null
   approvedBy?: string
+  approved_at?: string | null
+  rejection_reason?: string | null
+  created_at?: string
+  updated_at?: string
+
+  // Backward compatibility fields:
+  advertiser?: string
+  type?: "Banner" | "Sidebar" | "Popup" | "Sponsored Post"
+  mediaLabel?: string
+  startDate?: string
+  endDate?: string
+  spend?: number
+  submittedBy?: string
+  submittedOn?: string
+  postBy?: string
+  impressions?: number
+  clicks?: number
+  personName?: string
+  mobileNumber?: string
+  coverImageUrl?: string
+  largeImageUrl?: string
+}
+
+export interface AdvertisementCreateInput {
+  title: string
+  person_name?: string
+  mobile_number?: string
+  group_id?: string | null
+  start_date?: string
+  end_date?: string
+  subscription_months?: number
+  amount?: number | null
+  description?: string
+  placement?: string
+  target_url?: string
+  cover_image_url?: string
+  large_image_url?: string
+}
+
+export interface AdvertisementUpdateInput {
+  title?: string
+  person_name?: string
+  mobile_number?: string
+  group_id?: string | null
+  start_date?: string
+  end_date?: string
+  subscription_months?: number
+  amount?: number | null
+  description?: string
+  placement?: string
+  target_url?: string
+  status?: string
+  is_active?: boolean
+  cover_image_url?: string
+  large_image_url?: string
+}
+
+export interface SubscriptionPriceUpdate {
+  months: number
+  price: number
+}
+
+export interface AdvertisementListParams {
+  page?: number
+  page_size?: number
+  group_id?: string
+  status?: string
+  placement?: string
+  active_only?: boolean
+  search?: string
+}
+
+export interface AdvertisementListResponse {
+  items: Advertisement[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
 export type PermissionKey =

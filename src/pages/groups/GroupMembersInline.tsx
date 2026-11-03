@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 import { Settings2, ShieldCheck, UserPlus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useData } from "@/lib/useData"
@@ -16,6 +17,7 @@ export interface GroupDirectoryMember {
   name: string
   subtitle: string
   photo: string | null
+  role?: string | null
 }
 
 interface GroupMembersInlineProps {
@@ -42,6 +44,7 @@ function fromGroupMember(member: GroupMember): GroupDirectoryMember {
     name: member.full_name,
     subtitle: phone.trim(),
     photo: member.profile_photo_url || null,
+    role: member.role || (member as any).role_name || null,
   }
 }
 
@@ -54,6 +57,7 @@ function fromMember(member: MemberRecord): GroupDirectoryMember {
     name,
     subtitle: phone.trim(),
     photo: member.profile_photo_url || member.member_photo_link || null,
+    role: member.user?.role?.name || null,
   }
 }
 
@@ -151,7 +155,19 @@ export function GroupMembersInline({
                 <AvatarFallback>{initials(member.name) || "?"}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-medium">{h(member.name)}</p>
+                <p className="truncate text-sm font-medium flex items-center gap-1.5">
+                  {h(member.name)}
+                  {member.role === "SUPER_ADMIN" && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-amber-600 text-white hover:bg-amber-600">
+                      Super Admin
+                    </Badge>
+                  )}
+                  {member.role === "GROUP_ADMIN" && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      Group Admin
+                    </Badge>
+                  )}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{member.subtitle || "—"}</p>
               </div>
             </div>

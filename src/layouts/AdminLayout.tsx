@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Bell, LogOut, Menu, Settings } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -15,7 +15,8 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { initials } from "@/lib/format"
-import { ALL_PATHS, NAV_SECTIONS } from "@/config/navigation"
+import { ALL_PATHS, NAV_SECTIONS, type NavSection } from "@/config/navigation"
+import { isGroupAdminRole } from "@/services/api/session"
 import { useLanguage } from "@/lib/language"
 import { useAuth } from "@/lib/auth"
 
@@ -36,12 +37,22 @@ function Logo({ compact = false }: { compact?: boolean }) {
   )
 }
 
+function visibleSections(user: ReturnType<typeof useAuth>["user"]): NavSection[] {
+  if (!isGroupAdminRole(user)) return NAV_SECTIONS
+  return NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => item.path === "/admin/advertisements"),
+  })).filter((section) => section.items.length > 0)
+}
+
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation()
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const sections = visibleSections(user)
   return (
     <div className="sidebar-nav flex min-h-0 flex-1 flex-col gap-6 px-3 py-4">
-      {NAV_SECTIONS.map((section) => (
+      {sections.map((section) => (
         <div key={section.title} className="space-y-1">
           <p className="px-2 text-[11px] font-semibold tracking-wider text-[#d9c98d]/80 uppercase">
             {t(section.title)}
@@ -80,16 +91,23 @@ export function AdminLayout() {
   const { user, signOut } = useAuth()
   const { t } = useLanguage()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const section = NAV_SECTIONS.find((s) => s.items.some((i) => i.path === pathname))
+  const sections = visibleSections(user)
+  const section = sections.find((s) => s.items.some((i) => i.path === pathname))
   const current =
     section?.items.find((i) => (i.path === "/admin/dashboard" ? pathname === i.path : pathname.startsWith(i.path)))
 
   const name = user?.full_name || t("Admin")
+  const groupAdminOutsideAds =
+    isGroupAdminRole(user) && !pathname.startsWith("/admin/advertisements")
 
   const handleSignOut = () => {
     signOut()
     toast.success(t("Signed out"))
     navigate("/login", { replace: true })
+  }
+
+  if (groupAdminOutsideAds) {
+    return <Navigate to="/admin/advertisements" replace />
   }
 
   return (

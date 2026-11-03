@@ -47,7 +47,7 @@ export type MemberFieldKey =
   | "company_name"
   | "occupation_summary"
   | "group_designation"
-  | "social_group_name"
+  | "social_group_association_name"
   | "interest_fields"
   | "business_address"
   | "business_designation"
@@ -146,7 +146,7 @@ export const CREATE_SECTIONS: FieldSection[] = [
       { key: "member_occupation", label: "Member occupation", type: "text" },
       { key: "company_name", label: "Company name", type: "text" },
       { key: "group_designation", label: "Group designation", type: "text" },
-      { key: "social_group_name", label: "Social group name", type: "text" },
+      { key: "social_group_association_name", label: "Social group association name", type: "text" },
       { key: "occupation_summary", label: "Occupation summary", type: "textarea", full: true },
       { key: "interest_fields", label: "Interest fields", type: "textarea", full: true, placeholder: "Comma separated" },
     ],

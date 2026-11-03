@@ -1,5 +1,5 @@
 import { apiRequest, unwrapItem, unwrapList } from "@/lib/apiClient"
-import type { ApiEnvelope, GroupInput, GroupMember, GroupRecord } from "@/types"
+import type { ApiEnvelope, GroupAdmin, GroupInput, GroupMember, GroupRecord } from "@/types"
 
 const BASE = "/groups"
 
@@ -183,6 +183,14 @@ export async function addGroupAdmin(
     auth: true,
     body: { user_id: userId, role_name: roleName },
   })
+}
+
+/** `GET /groups/{id}/admins` — list all administrators for a specific group. */
+export async function getGroupAdmins(groupId: string): Promise<GroupAdmin[]> {
+  const payload = await apiRequest<ApiEnvelope<GroupAdmin[]>>(`${BASE}/${groupId}/admins`, {
+    auth: true,
+  })
+  return unwrapList<GroupAdmin>(payload)
 }
 
 /** `DELETE /groups/{id}/admins/{userId}` — revoke a group admin. */

@@ -8,13 +8,14 @@ import {
   Landmark,
   LayoutDashboard,
   MapPin,
+  Megaphone,
   
   Users,
 } from "lucide-react"
 //  Bell,
 //  CreditCard,
 //   FileBarChart,
-//   Megaphone,
+ 
 //   ReceiptText,
 //   ShieldCheck,
 export interface NavItem {
@@ -51,7 +52,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Jain Tirth Management", path: "/admin/jain-tirths", icon: MapPin },
       // { title: "News & Announcements", path: "/admin/news", icon: Newspaper },
       // { title: "Notifications", path: "/admin/notifications", icon: Bell },
-      // { title: "Advertisements", path: "/admin/advertisements", icon: Megaphone },
+      { title: "Advertisements", path: "/admin/advertisements", icon: Megaphone },
     ],
   },
   // {

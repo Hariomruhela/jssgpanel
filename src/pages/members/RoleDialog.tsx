@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Info, Loader2 } from "lucide-react"
 import { getErrorMessage } from "@/lib/apiClient"
@@ -39,14 +39,50 @@ export function RoleDialog({ member, onOpenChange, onSaved }: RoleDialogProps) {
   const groups = useData(useCallback(() => getGroupOptions().catch(() => [] as GroupOption[]), []))
 
   const [roleName, setRoleName] = useState(member?.user?.role?.name ?? "MEMBER")
-  const [groupId, setGroupId] = useState<string>(member?.group_id ?? NO_GROUP_VALUE)
+
+  const resolvedInitialGroupId = useMemo(() => {
+    const list = groups.data ?? []
+    // 1. If user already has user.group_id as UUID
+    const userGroupId = (member?.user as any)?.group_id
+    if (userGroupId && list.some((g) => g.id === userGroupId)) return userGroupId
+
+    // 2. If member has group_memberships with valid UUID
+    const primary = member?.group_memberships?.find((m) => m.is_primary) ?? member?.group_memberships?.[0]
+    if (primary?.group_id && list.some((g) => g.id === primary.group_id)) return primary.group_id
+
+    // 3. If member.group_id matches a group id directly
+    if (member?.group_id && list.some((g) => g.id === member.group_id)) return member.group_id
+
+    // 4. If member.social_group_name matches name
+    if (member?.social_group_name) {
+      const match = list.find((g) => g.name === member.social_group_name)
+      if (match) return match.id
+    }
+    return NO_GROUP_VALUE
+  }, [member, groups.data])
+
+  const [groupId, setGroupId] = useState<string>(NO_GROUP_VALUE)
+
+  useEffect(() => {
+    if (resolvedInitialGroupId !== NO_GROUP_VALUE) {
+      setGroupId(resolvedInitialGroupId)
+    }
+  }, [resolvedInitialGroupId])
+
   const [saving, setSaving] = useState(false)
 
   const user = member?.user ?? null
   const needsGroup = roleName === "GROUP_ADMIN"
+  const currentRole = member?.user?.role?.name ?? "MEMBER"
+  const currentGroupId =
+    (member?.user as any)?.group_id ||
+    member?.group_memberships?.find((m) => m.is_primary)?.group_id ||
+    member?.group_id ||
+    null
+
   const unchanged =
-    (member?.user?.role?.name ?? "") === roleName &&
-    (!needsGroup || (member?.group_id ?? null) === (groupId === NO_GROUP_VALUE ? null : groupId))
+    currentRole === roleName &&
+    (!needsGroup || (groupId !== NO_GROUP_VALUE && groupId === currentGroupId))
 
   const save = async () => {
     if (!member || !user) return
