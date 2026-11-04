@@ -148,7 +148,7 @@ export function GroupMembersInline({
           {list.map((member) => (
             <div
               key={member.id}
-              className="flex items-center gap-2.5 rounded-lg border bg-background/60 px-3 py-2"
+              className="flex items-center gap-2.5 rounded-lg border bg-[#FFFFFF] px-3 py-2"
             >
               <Avatar size="sm">
                 {member.photo && <AvatarImage src={member.photo} alt={member.name} />}
