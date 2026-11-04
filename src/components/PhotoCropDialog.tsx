@@ -20,6 +20,8 @@ interface PhotoCropDialogProps {
   file: File | null
   title?: string
   aspect?: number
+  outputWidth?: number
+  outputHeight?: number
   onOpenChange: (open: boolean) => void
   onCropped: (file: File) => void
 }
@@ -29,6 +31,8 @@ export function PhotoCropDialog({
   file,
   title,
   aspect = 1,
+  outputWidth,
+  outputHeight,
   onOpenChange,
   onCropped,
 }: PhotoCropDialogProps) {
@@ -61,7 +65,10 @@ export function PhotoCropDialog({
     setBusy(true)
     try {
       const type = file.type === "image/png" ? "image/png" : "image/jpeg"
-      const cropped = await cropImageToFile(imageSrc, area, file.name, type)
+      const cropped = await cropImageToFile(imageSrc, area, file.name, type, 0.92, {
+        outputWidth,
+        outputHeight,
+      })
       onCropped(cropped)
       onOpenChange(false)
     } catch (error) {
@@ -78,6 +85,7 @@ export function PhotoCropDialog({
           <DialogTitle>{title ?? t("Crop photo")}</DialogTitle>
           <DialogDescription>
             {t("Drag to reposition and use the slider to zoom, then confirm the crop.")}
+            {outputWidth && outputHeight ? ` (${outputWidth} × ${outputHeight} px)` : ""}
           </DialogDescription>
         </DialogHeader>
 

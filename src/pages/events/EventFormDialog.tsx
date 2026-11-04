@@ -128,7 +128,7 @@ function GroupMultiSelect({
               </span>
             </button>
           </div>
-          <CommandList className="max-h-[min(40vh,240px)] overflow-y-auto">
+          <CommandList className="max-h-60 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
             <CommandEmpty>No groups found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (

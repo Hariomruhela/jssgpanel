@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
+import { PhotoCropDialog } from "@/components/PhotoCropDialog"
 import { useAuth } from "@/lib/auth"
 import { API_BASE_URL, getErrorMessage } from "@/lib/apiClient"
 import type { Advertisement, SubscriptionDurationOption } from "@/types"
@@ -39,6 +40,10 @@ function todayIso(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 }
+
+const COVER_IMAGE_WIDTH = 1200
+const COVER_IMAGE_HEIGHT = 628
+const COVER_IMAGE_ASPECT = COVER_IMAGE_WIDTH / COVER_IMAGE_HEIGHT
 
 function resolveImageUrl(url?: string | null): string {
   if (!url) return ""
@@ -84,6 +89,7 @@ export function AdvertisementFormDialog({
 
   // Images
   const [coverImage, setCoverImage] = useState<ImageUploadItem>({ file: null, preview: null })
+  const [coverCropFile, setCoverCropFile] = useState<File | null>(null)
   const [largeImage, setLargeImage] = useState<ImageUploadItem>({ file: null, preview: null })
 
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -115,6 +121,7 @@ export function AdvertisementFormDialog({
   // Populate form on open/editing
   useEffect(() => {
     if (!open) return
+    setCoverCropFile(null)
 
     loadGroups().then((opts) => {
       if (editing) {
@@ -179,15 +186,16 @@ export function AdvertisementFormDialog({
   // Cover image select
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    e.target.value = ""
     if (!file) return
     if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
       toast.error("Please upload JPG or PNG for Cover Image.")
       return
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Cover image exceeds 2MB limit.")
-      return
-    }
+    setCoverCropFile(file)
+  }
+
+  const handleCoverCropped = (file: File) => {
     setCoverImage({
       file,
       preview: URL.createObjectURL(file),
@@ -201,10 +209,6 @@ export function AdvertisementFormDialog({
     if (!file) return
     if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
       toast.error("Please upload JPG or PNG for Large Image.")
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Large image exceeds 5MB limit.")
       return
     }
     setLargeImage({
@@ -226,8 +230,8 @@ export function AdvertisementFormDialog({
     if (!editing && !selectedPlan) {
       return "Subscription plans are unavailable. Please refresh and try again."
     }
-    if (!editing && !coverImage.file) return "Please upload a Cover Image (Max 2MB)."
-    if (!editing && !largeImage.file) return "Please upload a Large Image (Max 5MB)."
+    if (!editing && !coverImage.file) return "Please upload a Cover Image."
+    if (!editing && !largeImage.file) return "Please upload a Large Image."
     return null
   }
 
@@ -342,7 +346,7 @@ export function AdvertisementFormDialog({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60 overflow-y-auto">
                 {groupOptions.length > 0 ? (
                   groupOptions.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
@@ -400,7 +404,7 @@ export function AdvertisementFormDialog({
           <FormField
             label="Cover Image"
             required={!editing}
-            hint="1200 × 628 px · Max 2MB"
+            hint="Auto-cropped to 1200 × 628 px"
             className="min-w-0"
           >
             <input
@@ -453,7 +457,7 @@ export function AdvertisementFormDialog({
               >
                 <ImageIcon className="size-6 text-muted-foreground mx-auto mb-1.5" />
                 <p className="text-xs font-medium text-foreground">Click to upload Cover Image</p>
-                <p className="text-[11px] text-muted-foreground">1200 × 628 px · Max 2MB</p>
+                <p className="text-[11px] text-muted-foreground">1200 × 628 px · Auto-crop</p>
               </div>
             )}
           </FormField>
@@ -462,7 +466,7 @@ export function AdvertisementFormDialog({
           <FormField
             label="Large Image"
             required={!editing}
-            hint="1200 × 1800 px · Max 5MB"
+            hint="1200 × 1800 px"
             className="min-w-0"
           >
             <input
@@ -515,7 +519,7 @@ export function AdvertisementFormDialog({
               >
                 <ImageIcon className="size-6 text-muted-foreground mx-auto mb-1.5" />
                 <p className="text-xs font-medium text-foreground">Click to upload Large Banner Image</p>
-                <p className="text-[11px] text-muted-foreground">1200 × 1800 px · Max 5MB</p>
+                <p className="text-[11px] text-muted-foreground">1200 × 1800 px</p>
               </div>
             )}
           </FormField>
@@ -535,6 +539,17 @@ export function AdvertisementFormDialog({
             {editing ? "Save Changes" : "Subscribe & Publish"}
           </Button>
         </DialogFooter>
+
+        <PhotoCropDialog
+          open={coverCropFile !== null}
+          file={coverCropFile}
+          title="Crop cover image"
+          aspect={COVER_IMAGE_ASPECT}
+          outputWidth={COVER_IMAGE_WIDTH}
+          outputHeight={COVER_IMAGE_HEIGHT}
+          onOpenChange={(open) => !open && setCoverCropFile(null)}
+          onCropped={handleCoverCropped}
+        />
       </DialogContent>
     </Dialog>
   )

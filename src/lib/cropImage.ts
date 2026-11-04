@@ -9,6 +9,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
+export interface CropImageOptions {
+  outputWidth?: number
+  outputHeight?: number
+}
+
 /**
  * Draws the selected crop area of an image onto a canvas and returns it as a
  * `File`, so the cropped bytes can be uploaded exactly like the original pick.
@@ -18,11 +23,14 @@ export async function cropImageToFile(
   area: Area,
   fileName: string,
   type = "image/jpeg",
-  quality = 0.92
+  quality = 0.92,
+  options: CropImageOptions = {}
 ): Promise<File> {
   const image = await loadImage(imageSrc)
-  const width = Math.max(1, Math.round(area.width))
-  const height = Math.max(1, Math.round(area.height))
+  const cropWidth = Math.max(1, Math.round(area.width))
+  const cropHeight = Math.max(1, Math.round(area.height))
+  const width = Math.max(1, Math.round(options.outputWidth ?? cropWidth))
+  const height = Math.max(1, Math.round(options.outputHeight ?? cropHeight))
 
   const canvas = document.createElement("canvas")
   canvas.width = width
@@ -35,8 +43,8 @@ export async function cropImageToFile(
     image,
     Math.round(area.x),
     Math.round(area.y),
-    width,
-    height,
+    cropWidth,
+    cropHeight,
     0,
     0,
     width,

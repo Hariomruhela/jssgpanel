@@ -96,6 +96,7 @@ export function Calendar({
   const effectiveMinYear = Math.min(minYear, effectiveMaxYear)
 
   const selectedDate = parseToDate(selected)
+  const selectedIso = selectedDate ? dateToIso(selectedDate) : ""
   const [viewDate, setViewDate] = React.useState<Date>(
     () => selectedDate ?? defaultMonth ?? new Date()
   )
@@ -105,10 +106,11 @@ export function Calendar({
   const selectedYearRef = React.useRef<HTMLButtonElement>(null)
 
   React.useEffect(() => {
-    if (selectedDate) {
-      setViewDate(selectedDate)
-    }
-  }, [selectedDate])
+    if (!selectedIso) return
+    const next = parseToDate(selectedIso)
+    if (!next) return
+    setViewDate((current) => (current.getTime() === next.getTime() ? current : next))
+  }, [selectedIso])
 
   React.useEffect(() => {
     if (viewMode === "year" && selectedYearRef.current) {
