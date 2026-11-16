@@ -1,0 +1,26 @@
+export const COMPANY_CONFIG = {
+  name: "Jain Social Groups Federation",
+  shortName: "JSSG Federation",
+  tagline: "Uniting Jain Social Groups for Community Service and Welfare",
+  email: "techquitoes.it@gmail.com",
+  phone: "+91 788 982 2746",
+  phoneRaw: "+917889822746",
+  address: {
+    line1: "140, Scheme No 94",
+    city: "Indore",
+    state: "Madhya Pradesh",
+    pincode: "452016",
+    country: "India",
+    full: "140, Scheme No 94, Indore 452016, Madhya Pradesh, India",
+  },
+  operatingHours: "Monday to Saturday: 10:00 AM – 6:30 PM IST (Sunday Closed)",
+  grievanceOfficer: {
+    title: "Grievance Redressal Officer",
+    name: "Support Desk",
+    email: "techquitoes.it@gmail.com",
+    phone: "+91 788 982 2746",
+    address: "140, Scheme No 94, Indore 452016, Madhya Pradesh, India",
+  },
+  jurisdiction: "Indore, Madhya Pradesh, India",
+  lastUpdated: "November 16, 2026",
+} as const

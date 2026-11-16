@@ -42,7 +42,6 @@ import {
   addGroupMember,
   createGroup,
   getAllGroups,
-  getGroupMembers,
   removeGroup,
   updateGroup,
   uploadGroupImage,
@@ -183,17 +182,17 @@ function GroupsPage() {
     return [...entries.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [source.data])
 
-  // A member count per row: linked members for a managed group, members whose
-  // free-text group name matches for a directory-only entry.
+  // Managed groups already carry `member_count` on the Group List response, so
+  // only directory-only entries need a lookup (members whose free-text group
+  // name matches).
   useEffect(() => {
-    if (!directory.length) return
+    const directoryOnly = directory.filter((entry) => !entry.group)
+    if (!directoryOnly.length) return
     let active = true
     Promise.all(
-      directory.map(async (entry): Promise<[string, number]> => {
+      directoryOnly.map(async (entry): Promise<[string, number]> => {
         try {
-          const total = entry.group
-            ? (await getGroupMembers(entry.group.id, { pageSize: 1 })).total
-            : (await getMembers({ groupName: entry.name, pageSize: 1 })).total
+          const total = (await getMembers({ groupName: entry.name, pageSize: 1 })).total
           return [entry.key, total]
         } catch {
           return [entry.key, 0]
@@ -455,9 +454,14 @@ function GroupsPage() {
     {
       id: "members",
       header: "Members",
-      cell: (row) => (
-        <span className="font-medium tabular-nums">{memberCounts[row.key] ?? "…"}</span>
-      ),
+      cell: (row) => {
+        const count = row.group ? row.group.member_count : memberCounts[row.key]
+        return (
+          <span className="font-medium tabular-nums">
+            {count ?? (row.group ? "—" : "…")}
+          </span>
+        )
+      },
     },
     {
       id: "location",

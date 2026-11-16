@@ -52,6 +52,10 @@ interface DataTableProps<T> {
   currentPage?: number
   total?: number
   onPageChange?: (page: number) => void
+  /** When the API cannot return a total, use this to enable/disable the next page. */
+  hasNextPage?: boolean
+  /** Hide the record-count summary when the API does not provide an exact total. */
+  showRecordCount?: boolean
   onSearchChange?: (query: string) => void
   onFilterChange?: (key: string, value: string) => void
   /** The `rowKey` of the row currently expanded, if any. */
@@ -76,6 +80,8 @@ export function DataTable<T>({
   currentPage,
   total,
   onPageChange,
+  hasNextPage,
+  showRecordCount = true,
   onSearchChange,
   onFilterChange,
   expandedRowKey,
@@ -107,8 +113,12 @@ export function DataTable<T>({
   }, [data, search, searchKeys, filters, filterState, serverSide])
 
   const recordCount = serverSide ? (total ?? data.length) : filtered.length
-  const pageCount = Math.max(1, Math.ceil(recordCount / pageSize))
-  const safePage = Math.min(serverSide ? Math.max(1, currentPage ?? 1) : page, pageCount)
+  const requestedPage = serverSide ? Math.max(1, currentPage ?? 1) : page
+  const pageCount =
+    serverSide && hasNextPage !== undefined
+      ? Math.max(1, requestedPage + (hasNextPage ? 1 : 0))
+      : Math.max(1, Math.ceil(recordCount / pageSize))
+  const safePage = Math.min(requestedPage, pageCount)
   const start = (safePage - 1) * pageSize
   const visible = serverSide ? filtered : filtered.slice(start, start + pageSize)
 
@@ -233,15 +243,19 @@ export function DataTable<T>({
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {visible.length === 0
-            ? t("Showing 0 of {n} records", { n: recordCount })
-            : t("Showing {start}–{end} of {n} records", {
-                start: start + 1,
-                end: start + visible.length,
-                n: recordCount,
-              })}
-        </p>
+        {showRecordCount ? (
+          <p className="text-xs text-muted-foreground">
+            {visible.length === 0
+              ? t("Showing 0 of {n} records", { n: recordCount })
+              : t("Showing {start}–{end} of {n} records", {
+                  start: start + 1,
+                  end: start + visible.length,
+                  n: recordCount,
+                })}
+          </p>
+        ) : (
+          <span />
+        )}
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -252,7 +266,9 @@ export function DataTable<T>({
             <ChevronLeft />
           </Button>
           <span className="px-2 text-xs text-muted-foreground">
-            {t("Page {page} of {total}", { page: safePage, total: pageCount })}
+            {serverSide && hasNextPage !== undefined
+              ? t("Page {page}", { page: safePage })
+              : t("Page {page} of {total}", { page: safePage, total: pageCount })}
           </span>
           <Button
             variant="outline"

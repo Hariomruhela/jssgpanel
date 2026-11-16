@@ -1,5 +1,170 @@
-import type { PaymentStatus, PaymentTransaction, TransactionStatus } from "@/types"
+import type {
+  ApiEnvelope,
+  GroupObligationRecord,
+  GroupPaymentDetail,
+  GroupPaymentLinkResponse,
+  GroupPaymentOrderCreateResponse,
+  PaymentListParams,
+  PaymentListResult,
+  PaymentRecord,
+  PaymentStatus,
+  PaymentSummaryData,
+  PaymentTransaction,
+  TransactionStatus,
+} from "@/types"
+import { apiRequest, unwrapItem, unwrapList } from "@/lib/apiClient"
 import { FISCAL_YEAR, db, delay, nextId } from "@/services/mock/db"
+
+const BASE = "/payments"
+
+/** Global payment summary totals from `GET /api/v1/payments/summary`. */
+export async function getPaymentDashboardSummary(billingPeriod?: string): Promise<PaymentSummaryData> {
+  const query = new URLSearchParams()
+  if (billingPeriod) query.set("billing_period", billingPeriod)
+  const qStr = query.toString() ? `?${query.toString()}` : ""
+
+  const payload = await apiRequest<ApiEnvelope<PaymentSummaryData>>(`${BASE}/summary${qStr}`, {
+    auth: true,
+  })
+  return unwrapItem<PaymentSummaryData>(payload)
+}
+
+export interface GroupObligationListParams {
+  billingPeriod?: string
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface GroupObligationListResult {
+  obligations: GroupObligationRecord[]
+  pagination: ApiEnvelope<unknown>["pagination"] | null
+}
+
+/** Group-wise payment obligations from `GET /api/v1/payments/groups`. */
+export async function listGroupObligations(
+  params: GroupObligationListParams = {}
+): Promise<GroupObligationListResult> {
+  const page = params.page ?? 1
+  const pageSize = params.pageSize ?? 20
+  const query = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  if (params.billingPeriod) query.set("billing_period", params.billingPeriod)
+  if (params.search?.trim()) query.set("search", params.search.trim())
+
+  const payload = await apiRequest<ApiEnvelope<GroupObligationRecord[]>>(`${BASE}/groups?${query.toString()}`, {
+    auth: true,
+  })
+
+  return {
+    obligations: unwrapList<GroupObligationRecord>(payload),
+    pagination: payload?.pagination ?? null,
+  }
+}
+
+/** Detailed group obligation and transaction history from `GET /api/v1/payments/groups/{id}`. */
+export async function getGroupObligationDetail(
+  groupId: string,
+  billingPeriod?: string
+): Promise<GroupPaymentDetail> {
+  const query = new URLSearchParams()
+  if (billingPeriod) query.set("billing_period", billingPeriod)
+  const qStr = query.toString() ? `?${query.toString()}` : ""
+
+  const payload = await apiRequest<ApiEnvelope<GroupPaymentDetail>>(
+    `${BASE}/groups/${encodeURIComponent(groupId)}${qStr}`,
+    { auth: true }
+  )
+  return unwrapItem<GroupPaymentDetail>(payload)
+}
+
+/** WORKFLOW A: Create Razorpay Checkout order for Super Admin. */
+export async function createGroupCheckoutOrder(
+  groupId: string,
+  billingPeriod?: string
+): Promise<GroupPaymentOrderCreateResponse> {
+  const query = new URLSearchParams()
+  if (billingPeriod) query.set("billing_period", billingPeriod)
+  const qStr = query.toString() ? `?${query.toString()}` : ""
+
+  const payload = await apiRequest<ApiEnvelope<GroupPaymentOrderCreateResponse>>(
+    `${BASE}/groups/${encodeURIComponent(groupId)}/order${qStr}`,
+    {
+      method: "POST",
+      auth: true,
+    }
+  )
+  return unwrapItem<GroupPaymentOrderCreateResponse>(payload)
+}
+
+/** WORKFLOW A: Submit checkout signature for verification. */
+export async function verifyGroupCheckoutPayment(
+  groupId: string,
+  data: {
+    razorpay_order_id: string
+    razorpay_payment_id: string
+    razorpay_signature: string
+  }
+): Promise<GroupPaymentDetail> {
+  const payload = await apiRequest<ApiEnvelope<GroupPaymentDetail>>(
+    `${BASE}/groups/${encodeURIComponent(groupId)}/verify`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+      auth: true,
+    }
+  )
+  return unwrapItem<GroupPaymentDetail>(payload)
+}
+
+/** WORKFLOW B: Generate mobile-friendly Razorpay Payment Link for Group Admin. */
+export async function createGroupPaymentLink(
+  groupId: string,
+  billingPeriod?: string
+): Promise<GroupPaymentLinkResponse> {
+  const query = new URLSearchParams()
+  if (billingPeriod) query.set("billing_period", billingPeriod)
+  const qStr = query.toString() ? `?${query.toString()}` : ""
+
+  const payload = await apiRequest<ApiEnvelope<GroupPaymentLinkResponse>>(
+    `${BASE}/groups/${encodeURIComponent(groupId)}/link${qStr}`,
+    {
+      method: "POST",
+      auth: true,
+    }
+  )
+  return unwrapItem<GroupPaymentLinkResponse>(payload)
+}
+
+/** Paginated payment history from `GET /api/v1/payments`. */
+export async function listPayments(params: PaymentListParams = {}): Promise<PaymentListResult> {
+  const page = params.page ?? 1
+  const pageSize = params.pageSize ?? 20
+  const query = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  if (params.memberId) query.set("member_id", params.memberId)
+
+  const payload = await apiRequest<ApiEnvelope<PaymentRecord[]>>(`${BASE}?${query.toString()}`, {
+    auth: true,
+  })
+
+  return {
+    payments: unwrapList<PaymentRecord>(payload),
+    pagination: payload?.pagination ?? null,
+  }
+}
+
+/** A single payment with its transaction history from `GET /api/v1/payments/{id}`. */
+export async function getPaymentById(id: string): Promise<PaymentRecord> {
+  const payload = await apiRequest<ApiEnvelope<PaymentRecord>>(`${BASE}/${encodeURIComponent(id)}`, {
+    auth: true,
+  })
+  return unwrapItem<PaymentRecord>(payload)
+}
 
 export interface TransactionFilters {
   search?: string

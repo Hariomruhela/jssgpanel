@@ -8,6 +8,14 @@ const AuthLayout = lazy(() => import("@/pages/auth/AuthLayout"))
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"))
 const SignupPage = lazy(() => import("@/pages/auth/SignupPage"))
 
+const PublicLegalLayout = lazy(() =>
+  import("@/layouts/PublicLegalLayout").then((m) => ({ default: m.PublicLegalLayout }))
+)
+const PrivacyPolicyPage = lazy(() => import("@/pages/legal/PrivacyPolicyPage"))
+const TermsConditionsPage = lazy(() => import("@/pages/legal/TermsConditionsPage"))
+const RefundPolicyPage = lazy(() => import("@/pages/legal/RefundPolicyPage"))
+const ContactUsPage = lazy(() => import("@/pages/legal/ContactUsPage"))
+
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage"))
 const MembersPage = lazy(() => import("@/pages/members/MembersPage"))
 const RegistrationsPage = lazy(() => import("@/pages/registrations/RegistrationsPage"))
@@ -91,6 +99,30 @@ export default function App() {
                 </Suspense>
               }
             />
+          </Route>
+
+          {/* Public Legal & Compliance Routes (Required for Razorpay merchant activation) */}
+          <Route
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <PublicLegalLayout />
+              </Suspense>
+            }
+          >
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+
+            <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
+            <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
+            <Route path="/terms-of-service" element={<Navigate to="/terms-and-conditions" replace />} />
+
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
+            <Route path="/refund-and-cancellation-policy" element={<Navigate to="/refund-policy" replace />} />
+            <Route path="/cancellation-policy" element={<Navigate to="/refund-policy" replace />} />
+            <Route path="/refund" element={<Navigate to="/refund-policy" replace />} />
+
+            <Route path="/contact-us" element={<ContactUsPage />} />
+            <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
           </Route>
 
           {/* Every admin route sits behind <RequireAdmin>: signed out -> /login,

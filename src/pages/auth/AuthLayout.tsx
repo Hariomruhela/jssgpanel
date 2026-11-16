@@ -43,15 +43,26 @@ export default function AuthLayout() {
               </div>
             </div>
 
-            <div className="mt-auto flex items-center justify-between text-xs text-[#c9bd9a]/90">
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 transition-colors hover:bg-white/10"
-              >
-                <ArrowLeft className="size-3.5" />
-                {t("Go to dashboard")}
-              </Link>
-              <p>© {new Date().getFullYear()} {t("JSSG Federation")}</p>
+            <div className="mt-auto space-y-3 pt-6 text-xs text-[#c9bd9a]/90">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-[#c9bd9a]/80">
+                <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                <span>•</span>
+                <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms</Link>
+                <span>•</span>
+                <Link to="/refund-policy" className="hover:text-white transition-colors">Refund</Link>
+                <span>•</span>
+                <Link to="/contact-us" className="hover:text-white transition-colors">Contact</Link>
+              </div>
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 transition-colors hover:bg-white/10"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  {t("Go to dashboard")}
+                </Link>
+                <p>© {new Date().getFullYear()} {t("JSSG Federation")}</p>
+              </div>
             </div>
           </div>
         </aside>
@@ -80,6 +91,19 @@ export default function AuthLayout() {
             </div>
 
             <Outlet />
+
+            {/* Public Compliance / Legal footer for mobile and right side */}
+            <div className="pt-4 border-t border-[#e2d8c0]/70 dark:border-border/40 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                <Link to="/privacy-policy" className="hover:text-foreground hover:underline transition-colors">Privacy Policy</Link>
+                <span>•</span>
+                <Link to="/terms-and-conditions" className="hover:text-foreground hover:underline transition-colors">Terms</Link>
+                <span>•</span>
+                <Link to="/refund-policy" className="hover:text-foreground hover:underline transition-colors">Refund Policy</Link>
+                <span>•</span>
+                <Link to="/contact-us" className="hover:text-foreground hover:underline transition-colors">Contact Us</Link>
+              </div>
+            </div>
           </div>
         </main>
       </div>

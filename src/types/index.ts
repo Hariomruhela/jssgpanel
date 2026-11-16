@@ -466,6 +466,8 @@ export interface GroupRecord {
   is_active: boolean
   location_id: string | null
   admins: GroupAdmin[]
+  /** Number of linked members; supplied by the Group List endpoint. */
+  member_count?: number | null
   created_at: string
   updated_at: string
 }
@@ -932,6 +934,117 @@ export interface PaymentTransaction {
   status: TransactionStatus
   paidOn: string
   remark: string
+}
+
+/** Status values returned by the payment API (uppercase, unlike the legacy mock statuses). */
+export type ApiPaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "CANCELLED"
+
+/** A nested transaction row from `PaymentOut.transactions`. */
+export interface PaymentTransactionRecord {
+  id: string
+  payment_id: string
+  transaction_type: string
+  status: string
+  provider_transaction_id: string | null
+  amount: string | number | null
+  created_at: string
+}
+
+/** A payment row exactly as `GET /api/v1/payments` returns it. */
+export interface PaymentRecord {
+  id: string
+  member_id: string | null
+  fee_id: string | null
+  order_id: string
+  amount: string | number
+  currency: string
+  status: string
+  provider: string
+  provider_reference: string | null
+  paid_at: string | null
+  expires_at: string | null
+  transactions: PaymentTransactionRecord[]
+  created_at: string
+  updated_at: string
+}
+
+export interface PaymentListParams {
+  memberId?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface GroupObligationRecord {
+  id: string
+  group_id: string
+  group_name: string
+  billing_period: string
+  member_count: number
+  rate_per_member: number
+  expected_amount: number
+  collected_amount: number
+  pending_amount: number
+  collection_percentage: number
+  status: "UNPAID" | "PARTIAL" | "PAID" | "NOT_APPLICABLE" | "OVERPAID_REVIEW" | string
+  active_payment_link_id: string | null
+  active_payment_link_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupPaymentTransaction {
+  id: string
+  payment_id: string
+  transaction_type: string
+  status: string
+  amount: number | null
+  payment_method: string | null
+  razorpay_order_id: string | null
+  razorpay_payment_id: string | null
+  razorpay_payment_link_id: string | null
+  provider_transaction_id: string | null
+  paid_at: string | null
+  created_at: string
+}
+
+export interface GroupPaymentDetail {
+  obligation: GroupObligationRecord
+  transactions: GroupPaymentTransaction[]
+}
+
+export interface PaymentSummaryData {
+  total_expected: number
+  total_collected: number
+  total_outstanding: number
+  total_transactions: number
+}
+
+export interface GroupPaymentOrderCreateResponse {
+  order_id: string
+  razorpay_order_id: string
+  razorpay_key_id: string
+  amount: number
+  currency: string
+  group_id: string
+  group_name: string
+  obligation_id: string
+  status: string
+}
+
+export interface GroupPaymentLinkResponse {
+  payment_link_id: string
+  short_url: string
+  amount: number
+  currency: string
+  group_id: string
+  group_name: string
+  obligation_id: string
+  status: string
+}
+
+export interface PaymentListResult {
+  payments: PaymentRecord[]
+  pagination: ApiPagination | null
 }
 
 export interface DashboardStats {
