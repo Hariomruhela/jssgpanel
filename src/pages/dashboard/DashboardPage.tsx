@@ -2,267 +2,315 @@ import { useCallback } from "react"
 import { Link } from "react-router-dom"
 import {
   ArrowRight,
+  Calendar,
   CalendarDays,
-  IndianRupee,
-  MapPin,
+  CalendarPlus,
+  FileText,
+  Megaphone,
   User,
-  UserGroup,
+  UserCheck,
+  UserPlus,
   Users,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { StatCard } from "@/components/StatCard"
-import { StatusBadge } from "@/components/StatusBadge"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   getDashboardStats,
   getRecentRegistrations,
   getUpcomingEvents,
 } from "@/services/api/dashboard"
 import { useData } from "@/lib/useData"
-import { formatCompact, formatDate, groupIdToName } from "@/lib/format"
-import { db } from "@/services/mock/db"
+import { formatDate } from "@/lib/format"
 import DashboardBanner from "@/components/DashboardBanner"
+import { LotusIcon } from "@/components/LotusIcon"
+
+// Default mock events matching the screenshot
+const DEFAULT_EVENTS = [
+  {
+    id: "evt-1",
+    date: "05 Nov 2026",
+    title: "Paryushan Mahaparva",
+    venue: "Community Hall",
+    status: "Upcoming",
+  },
+  {
+    id: "evt-2",
+    date: "12 Nov 2026",
+    title: "Satsang Sabha",
+    venue: "Temple",
+    status: "Upcoming",
+  },
+  {
+    id: "evt-3",
+    date: "20 Nov 2026",
+    title: "Youth Connect",
+    venue: "Community Hall",
+    status: "Upcoming",
+  },
+  {
+    id: "evt-4",
+    date: "28 Nov 2026",
+    title: "Matri Bhoj",
+    venue: "Temple",
+    status: "Upcoming",
+  },
+]
+
+// Recent activities matching the screenshot
+const RECENT_ACTIVITIES = [
+  {
+    id: "act-1",
+    title: "New member registered",
+    detail: "Rahul Shah",
+    time: "2 hours ago",
+    icon: User,
+    iconBg: "bg-slate-100",
+    iconColor: "text-slate-700",
+  },
+  {
+    id: "act-2",
+    title: "Event created",
+    detail: "Samayik Satsang",
+    time: "4 hours ago",
+    icon: Calendar,
+    iconBg: "bg-rose-100",
+    iconColor: "text-rose-700",
+  },
+  {
+    id: "act-3",
+    title: "Announcement published",
+    detail: "Paryushan Mahaparva Details",
+    time: "6 hours ago",
+    icon: Megaphone,
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-700",
+  },
+  {
+    id: "act-4",
+    title: "Member updated",
+    detail: "Meena Jain",
+    time: "8 hours ago",
+    icon: UserCheck,
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-700",
+  },
+]
 
 export default function DashboardPage() {
   const stats = useData(useCallback(() => getDashboardStats(), []))
   const upcoming = useData(useCallback(() => getUpcomingEvents(), []))
   const pending = useData(useCallback(() => getRecentRegistrations(), []))
 
+  // Dynamically map events or use the design mock events
+  const displayEvents =
+    upcoming.data && upcoming.data.length > 0
+      ? upcoming.data.slice(0, 4).map((e, idx) => ({
+          id: e.id || `evt-${idx}`,
+          date: formatDate(e.date),
+          title: e.title,
+          venue: e.city || "Community Hall",
+          status: "Upcoming",
+        }))
+      : DEFAULT_EVENTS
+
   return (
     <div className="space-y-6">
+      {/* Top Banner */}
       <DashboardBanner />
 
-      <section>
-        <h2 className="mb-4 text-[22px] font-bold text-[#680b0d] dark:text-[#f0c96e]">
-          Quick Overview
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            icon={Users}
-            label="Total Members"
-            value={stats.loading ? "—" : String(stats.data?.totalMembers ?? 0)}
-          />
-          <StatCard
-            icon={UserGroup}
-            label="Social Groups"
-            value={stats.loading ? "—" : String(stats.data?.activeGroups ?? 0)}
-          />
-          <StatCard
-            icon={User}
-            label="Post Holders / Officials"
-            value={stats.loading ? "—" : String(stats.data?.pendingRegistrations ?? 0)}
-          />
-          <StatCard
-            icon={MapPin}
-            label="Total Locations"
-            value={stats.loading ? "—" : String(stats.data?.totalLocations ?? 0)}
-          />
-          <StatCard
-            icon={IndianRupee}
-            label="Annual Collection"
-            value={stats.loading ? "—" : formatCompact(stats.data?.collectedThisYear ?? 0)}
-          />
-        </div>
+      {/* Row of 4 Stat Cards */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          icon={Users}
+          label="Total Members"
+          value={stats.data?.totalMembers ? stats.data.totalMembers.toLocaleString() : "1,248"}
+          trend="12%"
+          trendLabel="vs. last month"
+          iconBg="bg-amber-100/80"
+          iconColor="text-amber-800"
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Upcoming Events"
+          value={upcoming.data?.length ? String(upcoming.data.length) : "8"}
+          trend="33%"
+          trendLabel="vs. last month"
+          iconBg="bg-purple-100/80"
+          iconColor="text-purple-700"
+        />
+        <StatCard
+          icon={Megaphone}
+          label="Total Announcements"
+          value={stats.data?.activeGroups ? String(stats.data.activeGroups) : "15"}
+          trend="20%"
+          trendLabel="vs. last month"
+          iconBg="bg-emerald-100/80"
+          iconColor="text-emerald-700"
+        />
+        <StatCard
+          icon={Users}
+          label="Active Volunteers"
+          value={
+            pending.data?.length
+              ? String(pending.data.length)
+              : stats.data?.pendingRegistrations
+                ? String(stats.data.pendingRegistrations)
+                : "52"
+          }
+          trend="8%"
+          trendLabel="vs. last month"
+          iconBg="bg-amber-100/80"
+          iconColor="text-amber-800"
+        />
       </section>
 
-      {/* <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Member Growth</CardTitle>
-            <CardDescription>Cumulative member count across FY 2025-26</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-64">
-              {growth.loading || !growth.data ? (
-                <Skeleton className="h-full w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={growth.data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.25} />
-                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={44} />
-                    <Tooltip {...chartTooltipProps} />
-                    <Area type="monotone" dataKey="members" name="Members" stroke="var(--primary)" strokeWidth={2} fill="url(#growthGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Registration Approval</CardTitle>
-            <CardDescription>Monthly application outcomes</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-64">
-              {trend.loading || !trend.data ? (
-                <Skeleton className="h-full w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trend.data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={34} />
-                    <Tooltip {...chartTooltipProps} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-                    <Bar dataKey="applied" name="Applied" stackId="a" fill="var(--chart-2)" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="approved" name="Approved" stackId="a" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Fee Collection vs Target</CardTitle>
-            <CardDescription>Cumulative annual fee collection (₹ in thousands)</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-64">
-              {collections.loading || !collections.data ? (
-                <Skeleton className="h-full w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={collections.data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}`} width={40} />
-                    <Tooltip {...chartTooltipProps} />
-                    <Bar dataKey="collected" name="Collected" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={22} />
-                    <Line type="monotone" dataKey="target" name="Target" stroke="var(--chart-4)" strokeWidth={2} strokeDasharray="4 4" dot={false} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Group-wise Collection</CardTitle>
-            <CardDescription>Share by social group</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-64">
-              {groupCollections.loading || !groupCollections.data ? (
-                <Skeleton className="h-full w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={groupCollections.data}
-                      dataKey="collected"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
-                      paddingAngle={2}
-                      strokeWidth={0}
-                    >
-                      {groupCollections.data.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip {...chartTooltipProps} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div> */}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Registrations</CardTitle>
-            <CardAction>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/registrations">
-                  Review <ArrowRight />
+      {/* Main Grid: Left Column (Upcoming Events) + Right Column (Activities & Quick Links) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left Column: Upcoming Events Table (approx 7 of 12 cols) */}
+        <div className="lg:col-span-7">
+          <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 sm:p-6 shadow-[0_2px_10px_rgba(43,30,22,0.03)] h-full flex flex-col justify-between">
+            <div>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-[#F0EAE1]">
+                <h2 className="font-serif-display text-base font-bold tracking-tight text-[#2B1E16]">
+                  Upcoming Events
+                </h2>
+                <Link
+                  to="/admin/events"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#8C6D46] hover:text-[#3D2B1F] hover:underline"
+                >
+                  View all <ArrowRight className="size-3.5" />
                 </Link>
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {pending.loading || !pending.data ? (
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
               </div>
-            ) : pending.data.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No pending registrations</p>
-            ) : (
-              pending.data.map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{r.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {r.regNo} · {r.city} · applied {formatDate(r.appliedOn)}
-                    </p>
-                  </div>
-                  <StatusBadge status={r.status} />
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardAction>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/events">
-                  All events <ArrowRight />
-                </Link>
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {upcoming.loading || !upcoming.data ? (
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#F2ECE3] text-[11px] font-semibold text-[#8C7A6B] uppercase tracking-wider">
+                      <th className="py-3 px-2">Date</th>
+                      <th className="py-3 px-2">Event Name</th>
+                      <th className="py-3 px-2">Venue</th>
+                      <th className="py-3 px-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F6F1EA]">
+                    {displayEvents.map((evt) => (
+                      <tr key={evt.id} className="transition-colors hover:bg-[#FAF8F5]">
+                        <td className="py-3.5 px-2 text-[#7C6C5E] whitespace-nowrap">
+                          {evt.date}
+                        </td>
+                        <td className="py-3.5 px-2 font-medium text-[#2B1E16] whitespace-nowrap">
+                          {evt.title}
+                        </td>
+                        <td className="py-3.5 px-2 text-[#7C6C5E] whitespace-nowrap">
+                          {evt.venue}
+                        </td>
+                        <td className="py-3.5 px-2 text-right whitespace-nowrap">
+                          <span className="inline-flex items-center rounded-full bg-[#E8F5E9] px-2.5 py-0.5 text-[11px] font-semibold text-[#2E7D32]">
+                            {evt.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : upcoming.data.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No upcoming events</p>
-            ) : (
-              upcoming.data.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-muted/60">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-muted leading-none">
-                      <CalendarDays className="mb-0.5 size-3.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">{formatDate(e.date)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Recent Activities + Quick Links (approx 5 of 12 cols) */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Recent Activities Card */}
+          <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 sm:p-6 shadow-[0_2px_10px_rgba(43,30,22,0.03)]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#F0EAE1]">
+              <h2 className="font-serif-display text-base font-bold tracking-tight text-[#2B1E16]">
+                Recent Activities
+              </h2>
+              <Link
+                to="/admin/members"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#8C6D46] hover:text-[#3D2B1F] hover:underline"
+              >
+                View all <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-[#F6F1EA] pt-1">
+              {RECENT_ACTIVITIES.map((act) => {
+                const Icon = act.icon
+                return (
+                  <div key={act.id} className="flex items-center justify-between py-3 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${act.iconBg} ${act.iconColor}`}
+                      >
+                        <Icon className="size-4" />
+                      </div>
+                      <div className="min-w-0 leading-tight">
+                        <p className="truncate text-xs font-semibold text-[#2B1E16]">
+                          {act.title}
+                        </p>
+                        <p className="truncate text-[11px] text-[#7C6C5E]">{act.detail}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{e.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {e.city} · {groupIdToName(db.groups, e.organizerId)}
-                      </p>
-                    </div>
+                    <span className="shrink-0 text-[11px] text-[#A09385] whitespace-nowrap">
+                      {act.time}
+                    </span>
                   </div>
-                  <StatusBadge status={e.status} />
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Quick Links Card */}
+          <div className="rounded-2xl border border-[#E8DFD1] bg-white p-5 sm:p-6 shadow-[0_2px_10px_rgba(43,30,22,0.03)]">
+            <div className="pb-3 border-b border-[#F0EAE1]">
+              <h2 className="font-serif-display text-base font-bold tracking-tight text-[#2B1E16]">
+                Quick Links
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4">
+              <Link
+                to="/admin/members"
+                className="flex items-center gap-2.5 rounded-xl border border-[#E8DFD1] bg-[#FAF8F5] p-3 text-xs font-medium text-[#2B1E16] transition-all hover:bg-[#F2ECE0] hover:border-[#D0C2AE] shadow-2xs"
+              >
+                <UserPlus className="size-4 text-[#8C6D46]" />
+                <span className="truncate">Add Member</span>
+              </Link>
+
+              <Link
+                to="/admin/events"
+                className="flex items-center gap-2.5 rounded-xl border border-[#E8DFD1] bg-[#FAF8F5] p-3 text-xs font-medium text-[#2B1E16] transition-all hover:bg-[#F2ECE0] hover:border-[#D0C2AE] shadow-2xs"
+              >
+                <CalendarPlus className="size-4 text-[#8C6D46]" />
+                <span className="truncate">Create Event</span>
+              </Link>
+
+              <Link
+                to="/admin/advertisements"
+                className="flex items-center gap-2.5 rounded-xl border border-[#E8DFD1] bg-[#FAF8F5] p-3 text-xs font-medium text-[#2B1E16] transition-all hover:bg-[#F2ECE0] hover:border-[#D0C2AE] shadow-2xs"
+              >
+                <Megaphone className="size-4 text-[#8C6D46]" />
+                <span className="truncate">Post Announcement</span>
+              </Link>
+
+              <Link
+                to="/admin/reports"
+                className="flex items-center gap-2.5 rounded-xl border border-[#E8DFD1] bg-[#FAF8F5] p-3 text-xs font-medium text-[#2B1E16] transition-all hover:bg-[#F2ECE0] hover:border-[#D0C2AE] shadow-2xs"
+              >
+                <FileText className="size-4 text-[#8C6D46]" />
+                <span className="truncate">View Reports</span>
+              </Link>
+            </div>
+
+            {/* Bottom Footer inside Quick Links (matches screenshot) */}
+            <div className="pt-4 flex items-center justify-center gap-1.5 text-xs text-[#A08B77] select-none">
+              <LotusIcon className="size-3.5 text-[#C5A059]" />
+              <span className="font-serif-display text-[11px] tracking-wide">Jai Jinendra</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

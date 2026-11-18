@@ -986,10 +986,24 @@ export interface GroupObligationRecord {
   pending_amount: number
   collection_percentage: number
   status: "UNPAID" | "PARTIAL" | "PAID" | "NOT_APPLICABLE" | "OVERPAID_REVIEW" | string
+  due_date?: string | null
   active_payment_link_id: string | null
   active_payment_link_url: string | null
   created_at: string
   updated_at: string
+}
+
+export interface PaymentSettings {
+  rate_per_member: number
+  billing_period: string
+  due_date: string
+  late_fee: number
+  allow_partial_payments: boolean
+  min_partial_amount: number
+  payment_gateway: string
+  razorpay_key_id: string
+  allowed_payment_methods: string[]
+  apply_to_existing_obligations?: boolean
 }
 
 export interface GroupPaymentTransaction {

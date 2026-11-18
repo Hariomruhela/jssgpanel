@@ -11,7 +11,7 @@ export function PageHeader({ title, description, actions, meta }: PageHeaderProp
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="space-y-1">
-        <h1 className="font-serif-display text-2xl leading-tight font-semibold tracking-tight text-[#174824] dark:text-[#d7e6cf]">{title}</h1>
+        <h1 className="font-serif-display text-2xl leading-tight font-semibold tracking-tight text-[#2B1E16] dark:text-[#f3e6d0]">{title}</h1>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
         {meta}
       </div>

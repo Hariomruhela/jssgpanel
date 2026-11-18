@@ -254,7 +254,7 @@ export function Calendar({
               <button
                 type="button"
                 onClick={() => setViewMode("month")}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent hover:text-[#123f24] dark:hover:text-[#c5a84e] transition-colors border border-transparent hover:border-[#c5a84e]/30 cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent hover:text-[#3D2B1F] dark:hover:text-[#c5a84e] transition-colors border border-transparent hover:border-[#c5a84e]/30 cursor-pointer"
                 title="Click to select month"
               >
                 <span>{MONTHS[currentViewMonth]}</span>
@@ -264,7 +264,7 @@ export function Calendar({
               <button
                 type="button"
                 onClick={() => setViewMode("year")}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent hover:text-[#123f24] dark:hover:text-[#c5a84e] transition-colors border border-transparent hover:border-[#c5a84e]/30 cursor-pointer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent hover:text-[#3D2B1F] dark:hover:text-[#c5a84e] transition-colors border border-transparent hover:border-[#c5a84e]/30 cursor-pointer"
                 title="Click to select year"
               >
                 <span>{currentViewYear}</span>
@@ -368,11 +368,11 @@ export function Calendar({
                   className={cn(
                     "h-8 w-8 mx-auto flex items-center justify-center rounded-lg text-xs font-medium transition-all select-none cursor-pointer",
                     isCurrentMonth
-                      ? "text-foreground hover:bg-[#c5a84e]/15 hover:text-[#123f24] dark:hover:text-[#c5a84e]"
+                      ? "text-foreground hover:bg-[#c5a84e]/15 hover:text-[#3D2B1F] dark:hover:text-[#c5a84e]"
                       : "text-muted-foreground/35 hover:text-muted-foreground hover:bg-accent/40",
-                    item.isToday && !item.isSelected && "border border-[#c5a84e] font-bold text-[#123f24] dark:text-[#c5a84e]",
+                    item.isToday && !item.isSelected && "border border-[#c5a84e] font-bold text-[#3D2B1F] dark:text-[#c5a84e]",
                     item.isSelected &&
-                      "bg-[#123f24] text-white font-semibold ring-2 ring-[#c5a84e] shadow-sm hover:bg-[#123f24] hover:text-white dark:bg-[#c5a84e] dark:text-[#123f24]"
+                      "bg-[#3D2B1F] text-white font-semibold ring-2 ring-[#c5a84e] shadow-sm hover:bg-[#3D2B1F] hover:text-white dark:bg-[#c5a84e] dark:text-[#3D2B1F]"
                   )}
                 >
                   {item.dayNumber}
@@ -401,9 +401,9 @@ export function Calendar({
                   className={cn(
                     "py-2.5 px-3 rounded-lg text-xs font-semibold transition-all border text-center select-none cursor-pointer",
                     isSelected
-                      ? "bg-[#123f24] text-white border-[#c5a84e] ring-2 ring-[#c5a84e]/40 dark:bg-[#c5a84e] dark:text-[#123f24]"
+                      ? "bg-[#3D2B1F] text-white border-[#c5a84e] ring-2 ring-[#c5a84e]/40 dark:bg-[#c5a84e] dark:text-[#3D2B1F]"
                       : isCurrent
-                      ? "border-[#c5a84e]/70 bg-accent text-[#123f24] dark:text-[#c5a84e]"
+                      ? "border-[#c5a84e]/70 bg-accent text-[#3D2B1F] dark:text-[#c5a84e]"
                       : "border-transparent hover:border-[#c5a84e]/30 hover:bg-[#c5a84e]/15 text-foreground"
                   )}
                 >
@@ -434,9 +434,9 @@ export function Calendar({
                   className={cn(
                     "py-2 px-1 text-xs font-medium rounded-lg transition-all border text-center select-none cursor-pointer",
                     isSelected
-                      ? "bg-[#123f24] text-white font-semibold border-[#c5a84e] ring-2 ring-[#c5a84e]/40 dark:bg-[#c5a84e] dark:text-[#123f24]"
+                      ? "bg-[#3D2B1F] text-white font-semibold border-[#c5a84e] ring-2 ring-[#c5a84e]/40 dark:bg-[#c5a84e] dark:text-[#3D2B1F]"
                       : isCurrent
-                      ? "border-[#c5a84e] bg-accent font-semibold text-[#123f24] dark:text-[#c5a84e]"
+                      ? "border-[#c5a84e] bg-accent font-semibold text-[#3D2B1F] dark:text-[#c5a84e]"
                       : "border-transparent hover:border-[#c5a84e]/30 hover:bg-[#c5a84e]/15 text-foreground"
                   )}
                 >
@@ -455,7 +455,7 @@ export function Calendar({
           variant="ghost"
           size="xs"
           onClick={handleToday}
-          className="text-[#123f24] dark:text-[#c5a84e] font-semibold hover:bg-accent"
+          className="text-[#3D2B1F] dark:text-[#c5a84e] font-semibold hover:bg-accent"
         >
           Today
         </Button>
@@ -603,7 +603,7 @@ export function DatePicker({
             aria-label="Open calendar"
             className={cn(
               "shrink-0 transition-colors border-border hover:bg-accent hover:text-accent-foreground",
-              open && "border-[#c5a84e] bg-accent text-[#123f24] ring-2 ring-[#c5a84e]/30"
+              open && "border-[#c5a84e] bg-accent text-[#3D2B1F] ring-2 ring-[#c5a84e]/30"
             )}
           >
             <CalendarIcon className="size-4" />

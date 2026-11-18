@@ -1,23 +1,50 @@
 import type { LucideIcon } from "lucide-react"
 
-interface StatCardProps {
+export interface StatCardProps {
   icon: LucideIcon
-  value: string
+  value: string | number
   label: string
+  trend?: string
+  trendLabel?: string
+  iconBg?: string
+  iconColor?: string
 }
 
-export function StatCard({ icon: Icon, value, label }: StatCardProps) {
+export function StatCard({
+  icon: Icon,
+  value,
+  label,
+  trend,
+  trendLabel = "vs. last month",
+  iconBg = "bg-amber-100/70",
+  iconColor = "text-amber-800",
+}: StatCardProps) {
   return (
-    <div className="flex flex-col items-center rounded-[16px] border border-[#ece9e4] bg-white px-4 py-5 text-center shadow-[0_2px_12px_rgba(0,0,0,0.05)] dark:border-[#38332a] dark:bg-[#221f19]">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#9a6a00]/10 dark:bg-[#f0c96e]/10">
-        <Icon className="size-6 text-[#9a6a00] dark:text-[#f0c96e]" strokeWidth={2} />
-      </span>
-      <p className="mt-2 text-2xl leading-none font-bold tracking-tight text-[#222] dark:text-[#f3e6d0]">
-        {value}
-      </p>
-      <p className="mt-2 text-[13px] font-medium text-[#8a8f98] dark:text-[#b5aa97]">
+    <div className="flex flex-col rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-[0_2px_8px_rgba(43,30,22,0.03)] transition-all hover:shadow-[0_4px_16px_rgba(43,30,22,0.06)] text-left">
+      {/* Icon */}
+      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconColor}`}>
+        <Icon className="size-4.5" strokeWidth={2} />
+      </div>
+
+      {/* Label */}
+      <p className="mt-3 text-xs font-medium text-[#7C6C5E]">
         {label}
       </p>
+
+      {/* Value */}
+      <p className="mt-1 text-2xl font-bold tracking-tight text-[#2B1E16]">
+        {value}
+      </p>
+
+      {/* Trend Percentage */}
+      {trend && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
+          <span className="font-semibold text-emerald-600 flex items-center gap-0.5">
+            <span>↑</span> {trend}
+          </span>
+          <span className="text-[#9C8C7D]">{trendLabel}</span>
+        </div>
+      )}
     </div>
   )
 }

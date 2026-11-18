@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState, type ReactNode } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
   AlertCircle,
+  CalendarClock,
   Check,
   Copy,
   CreditCard,
@@ -10,6 +12,7 @@ import {
   ReceiptText,
   RefreshCw,
   Search,
+  Settings,
   Share2,
   Users,
 } from "lucide-react"
@@ -23,9 +26,10 @@ import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { useData } from "@/lib/useData"
-import { formatCurrency, formatDateTime } from "@/lib/format"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format"
 import { getErrorMessage } from "@/lib/apiClient"
 import { loadRazorpayScript } from "@/lib/razorpay"
+import { PaymentSettingsTab } from "./PaymentSettingsTab"
 import type {
   GroupObligationRecord,
   GroupPaymentLinkResponse,
@@ -81,12 +85,22 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Payment Module"
-        description="Dual-workflow group payment collection and transaction ledger"
+        description="Dual-workflow group payment collection, settings configuration, and transaction ledger"
         actions={
-          <Button onClick={handleRecordPayment}>
-            <Plus />
-            Collect Payment
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={activeTab === "settings" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("settings")}
+            >
+              <Settings className="size-4" />
+              Payment Settings
+            </Button>
+            <Button size="sm" onClick={handleRecordPayment}>
+              <Plus className="size-4" />
+              Collect Payment
+            </Button>
+          </div>
         }
       />
 
@@ -116,6 +130,7 @@ export default function PaymentsPage() {
         <TabsList>
           <TabsTrigger value="status">Group-wise Status</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="settings">Payment Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="status" className="pt-2">
           <GroupStatusTab onLedgerUpdated={summary.reload} />
@@ -123,12 +138,16 @@ export default function PaymentsPage() {
         <TabsContent value="transactions" className="pt-2">
           <TransactionsTab />
         </TabsContent>
+        <TabsContent value="settings" className="pt-2">
+          <PaymentSettingsTab onSettingsUpdated={() => summary.reload()} />
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
 function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -252,13 +271,18 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
                       <CardTitle className="truncate font-semibold text-base" title={group.group_name}>
                         {group.group_name}
                       </CardTitle>
-                      <CardDescription className="flex items-center gap-1.5 pt-1 text-xs">
+                      <CardDescription className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
                         <Users className="size-3.5 text-muted-foreground" />
                         <span>
                           {group.member_count} eligible {group.member_count === 1 ? "member" : "members"}
                         </span>
                         <span>•</span>
                         <span>₹{group.rate_per_member}/member</span>
+                        <span>•</span>
+                        <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                          <CalendarClock className="size-3 text-primary" />
+                          Due: {formatDate(group.due_date || "2027-03-31")}
+                        </span>
                       </CardDescription>
                     </div>
                     <StatusBadge status={group.status} />
@@ -298,11 +322,11 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
 
                 <CardFooter className="flex flex-col gap-2 pt-2 border-t bg-muted/10">
                   <div className="grid w-full grid-cols-2 gap-2">
-                    {/* WORKFLOW A: Pay Now (Super Admin Checkout) */}
+                    {/* WORKFLOW A: Pay Now (Navigates to Dedicated Checkout Page) */}
                     <Button
                       size="sm"
                       disabled={!canCollect}
-                      onClick={() => setCheckoutTarget(group)}
+                      onClick={() => navigate(`/admin/payments/pay/${group.group_id}`)}
                       className="w-full"
                     >
                       <CreditCard className="size-4" />
@@ -706,7 +730,13 @@ function GroupPaymentDetailsModal({
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Billing Period {obligation.billing_period}
                 </span>
-                <StatusBadge status={obligation.status} />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <CalendarClock className="size-3 text-primary" />
+                    Due: {formatDate(obligation.due_date || "2027-03-31")}
+                  </span>
+                  <StatusBadge status={obligation.status} />
+                </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>

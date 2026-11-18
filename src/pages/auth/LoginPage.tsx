@@ -1,17 +1,16 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Eye, EyeOff, KeyRound, Lock, Mail } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { FormField } from "@/components/FormField"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth"
 import { getErrorMessage } from "@/lib/apiClient"
 import { useLanguage } from "@/lib/language"
 import { NotAdminError, isGroupAdminRole, isPhoneIdentifier } from "@/services/api/session"
+import { LotusIcon } from "@/components/LotusIcon"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -55,8 +54,6 @@ export default function LoginPage() {
       toast.success(t("Logged in successfully"), {
         description: t("Signed in as {name}", { name: user.full_name }),
       })
-      // Group Admins only have Advertisement Management; Super Admins keep the
-      // requested panel page (or the dashboard by default).
       const target = isGroupAdminRole(user)
         ? "/admin/advertisements"
         : requestedPath?.startsWith("/admin")
@@ -75,115 +72,151 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="border-[rgba(150,120,55,0.28)] shadow-[0_20px_60px_rgba(47,37,20,0.08)]">
-      <CardHeader className="gap-2 pb-0">
-        <CardTitle className="font-serif-display text-xl tracking-tight text-[#174824] dark:text-[#d7e6cf] sm:text-2xl">
-          {t("Log in")}
-        </CardTitle>
-      </CardHeader>
+    <div className="relative w-full rounded-2xl border border-[#EFE8DC] bg-white p-7 sm:p-8 shadow-[0_8px_30px_rgba(43,30,22,0.05)]">
+      {/* Hand Icon at top of Card */}
+      <div className="flex justify-center mb-2">
+        <img
+          src="/hand_icon.png"
+          alt="Ahimsa Hand"
+          className="h-10 w-auto object-contain select-none"
+        />
+      </div>
 
-      <form onSubmit={handleSubmit} noValidate>
-        <CardContent className="space-y-4 pt-4">
-          <FormField label={t("Phone number or email")} required>
-            <div className="relative">
-              {isPhone ? (
-                <KeyRound className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              ) : (
-                <Mail className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              )}
-              <Input
-                type="text"
-                inputMode={isPhone ? "tel" : "email"}
-                autoComplete="username"
-                placeholder="9876543210 or admin@jssg.in"
-                value={identifier}
-                onChange={(e) => {
-                  setIdentifier(e.target.value)
-                  if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
-                }}
-                className="pl-9"
-                aria-invalid={!!errors.identifier}
-              />
-            </div>
-            {errors.identifier && (
-              <p className="text-xs text-destructive" role="alert">
-                {errors.identifier}
-              </p>
+      {/* Card Header text */}
+      <div className="text-center mb-5">
+        <h2 className="font-serif-display text-2xl font-bold tracking-tight text-[#2B1E16]">
+          {t("Welcome Back")}
+        </h2>
+        <p className="mt-1 text-xs text-[#8C7C6D]">
+          {t("Sign in to access the JSSG Jain Community Admin Panel")}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {/* Phone number or email input */}
+        <div className="space-y-1.5">
+          <Label htmlFor="identifier" className="text-xs font-semibold text-[#2B1E16]">
+            {t("Phone number or email")} <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative">
+            {isPhone ? (
+              <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#A89887]" />
+            ) : (
+              <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#A89887]" />
             )}
-          </FormField>
+            <Input
+              id="identifier"
+              type="text"
+              inputMode={isPhone ? "tel" : "email"}
+              autoComplete="username"
+              placeholder={t("Enter your phone number or email")}
+              value={identifier}
+              onChange={(e) => {
+                setIdentifier(e.target.value)
+                if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
+              }}
+              className="h-10 pl-9 rounded-lg border-[#E5DDD0] bg-white text-xs placeholder:text-[#B5A899] focus-visible:border-[#8C6D46] focus-visible:ring-1 focus-visible:ring-[#8C6D46]"
+              aria-invalid={!!errors.identifier}
+            />
+          </div>
+          {errors.identifier && (
+            <p className="text-xs text-destructive" role="alert">
+              {errors.identifier}
+            </p>
+          )}
+        </div>
 
-          <FormField label={t("Password")} required>
-            <div className="relative">
-              <Lock className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
-                }}
-                className="pl-9 pr-9"
-                aria-invalid={!!errors.password}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                aria-label={showPassword ? t("Hide password") : t("Show password")}
-              >
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-xs text-destructive" role="alert">
-                {errors.password}
-              </p>
-            )}
-          </FormField>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
-              />
-              <Label htmlFor="remember" className="cursor-pointer text-sm text-muted-foreground">
-                {t("Remember me")}
-              </Label>
-            </div>
+        {/* Password input */}
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className="text-xs font-semibold text-[#2B1E16]">
+            {t("Password")} <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#A89887]" />
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder={t("Enter your password")}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+              }}
+              className="h-10 pl-9 pr-9 rounded-lg border-[#E5DDD0] bg-white text-xs placeholder:text-[#B5A899] focus-visible:border-[#8C6D46] focus-visible:ring-1 focus-visible:ring-[#8C6D46]"
+              aria-invalid={!!errors.password}
+            />
             <button
               type="button"
-              className="text-xs font-medium text-[#174824] underline-offset-4 hover:underline dark:text-[#d7e6cf]"
-              onClick={() =>
-                toast.info(t("Password reset"), {
-                  description: t("Password reset will be available soon"),
-                })
-              }
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-[#A89887] transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none"
+              aria-label={showPassword ? t("Hide password") : t("Show password")}
             >
-              {t("Forgot password?")}
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
-        </CardContent>
+          {errors.password && (
+            <p className="text-xs text-destructive" role="alert">
+              {errors.password}
+            </p>
+          )}
+        </div>
 
-        <CardFooter className="flex flex-col gap-4 pt-0">
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? t("Logging in...") : t("Log in")}
-          </Button>
+        {/* Remember me & Forgot password */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
+              className="border-[#D0C5B4] data-[state=checked]:bg-[#422E22] data-[state=checked]:border-[#422E22]"
+            />
+            <Label htmlFor="remember" className="cursor-pointer text-xs text-[#6B5A4B]">
+              {t("Remember me")}
+            </Label>
+          </div>
+          <button
+            type="button"
+            className="text-xs font-medium text-[#6B5A4B] underline-offset-4 hover:underline hover:text-[#2B1E16]"
+            onClick={() =>
+              toast.info(t("Password reset"), {
+                description: t("Password reset will be available soon"),
+              })
+            }
+          >
+            {t("Forgot password?")}
+          </button>
+        </div>
 
-          <p className="text-center text-sm text-muted-foreground">
-            {t("Don't have an account?")}{" "}
-            <Link
-              to="/signup"
-              className="font-medium text-[#174824] underline-offset-4 hover:underline dark:text-[#d7e6cf]"
-            >
-              {t("Sign up")}
-            </Link>
-          </p>
-        </CardFooter>
+        {/* Submit button */}
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full h-10 mt-3 rounded-lg bg-[#422E22] text-white hover:bg-[#2D1F17] shadow-sm shadow-[#422E22]/20 font-medium transition-all"
+          disabled={loading}
+        >
+          <span>{loading ? t("Logging in...") : t("Log In")}</span>
+          <ArrowRight className="size-4 ml-1.5" />
+        </Button>
+
+        {/* Don't have an account? */}
+        <p className="pt-2 text-center text-xs text-[#8C7C6D]">
+          {t("Don't have an account?")}{" "}
+          <Link
+            to="/signup"
+            className="font-semibold text-[#B88B4A] hover:text-[#422E22] underline-offset-4 hover:underline"
+          >
+            {t("Contact Admin")}
+          </Link>
+        </p>
+
+        {/* Lotus Divider with Horizontal Accents (matches screenshot) */}
+        <div className="pt-4 flex items-center justify-center gap-3 text-[#C5A059]">
+          <span className="h-px w-10 bg-[#C5A059]/40" />
+          <LotusIcon className="size-4 text-[#C5A059]" />
+          <span className="h-px w-10 bg-[#C5A059]/40" />
+        </div>
       </form>
-    </Card>
+    </div>
   )
 }

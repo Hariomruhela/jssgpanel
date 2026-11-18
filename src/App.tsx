@@ -33,6 +33,7 @@ const RolesPage = lazy(() => import("@/pages/roles/RolesPage"))
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"))
 const FeesPage = lazy(() => import("@/pages/fees/FeesPage"))
 const PaymentsPage = lazy(() => import("@/pages/payments/PaymentsPage"))
+const GroupPayPage = lazy(() => import("@/pages/payments/GroupPayPage"))
 const PaymentReportsPage = lazy(() => import("@/pages/payment-reports/PaymentReportsPage"))
 
 /** Panel pages, keyed by their path below /admin. */
@@ -54,6 +55,7 @@ const ADMIN_PAGES: Record<string, React.ComponentType> = {
   reports: ReportsPage,
   fees: FeesPage,
   payments: PaymentsPage,
+  "payments/pay/:groupId": GroupPayPage,
   "payment-reports": PaymentReportsPage,
 }
 

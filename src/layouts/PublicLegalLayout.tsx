@@ -13,7 +13,7 @@ export function PublicLegalLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-[#faf8f2] text-foreground antialiased selection:bg-[#c5a84e]/30">
       {/* Top Notification / Trust Bar */}
-      <div className="bg-[#0e351f] text-[#e3dcce] text-xs px-4 py-2 border-b border-white/10">
+      <div className="bg-[#261B14] text-[#FAF6EE] text-xs px-4 py-2 border-b border-white/10">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="inline-flex size-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -21,13 +21,13 @@ export function PublicLegalLayout() {
               Official Compliance Portal — {COMPANY_CONFIG.name}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-[#c9bd9a]">
+          <div className="flex items-center gap-4 text-[11px] text-[#C5A059]">
             <span className="inline-flex items-center gap-1">
               <Lock className="size-3 text-emerald-400" />
               256-Bit SSL Encrypted
             </span>
             <span className="hidden sm:inline-flex items-center gap-1">
-              <ShieldCheck className="size-3 text-[#c5a84e]" />
+              <ShieldCheck className="size-3 text-[#C5A059]" />
               Razorpay Verified Merchant
             </span>
           </div>
@@ -35,14 +35,14 @@ export function PublicLegalLayout() {
       </div>
 
       {/* Main Header / Navigation */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e6decc] shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E8DFD1] shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link to="/contact-us" className="flex items-center gap-3 group">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#123f24] to-[#1e5833] font-serif-display text-base font-bold text-[#f7e7be] shadow-sm ring-1 ring-black/10 group-hover:scale-105 transition-transform">
-              JSG
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#3D2B1F] p-1.5 shadow-sm ring-1 ring-black/10 group-hover:scale-105 transition-transform">
+              <img src="/hand_icon.png" alt="" className="size-full object-contain" />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold text-[#123f24] tracking-tight leading-none group-hover:text-[#1e5833] transition-colors">
+              <h1 className="text-sm sm:text-base font-bold text-[#2B1E16] tracking-tight leading-none group-hover:text-[#3D2B1F] transition-colors">
                 {COMPANY_CONFIG.name}
               </h1>
               <p className="text-[11px] text-muted-foreground tracking-wide mt-0.5">
@@ -60,8 +60,8 @@ export function PublicLegalLayout() {
                 className={({ isActive }) =>
                   `px-3 py-1.5 rounded-lg transition-colors ${
                     isActive
-                      ? "bg-[#123f24] text-white shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-[#f1ecd9]"
+                      ? "bg-[#3D2B1F] text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-[#FAF6EE]"
                   }`
                 }
               >
@@ -74,7 +74,7 @@ export function PublicLegalLayout() {
           <div className="flex items-center gap-2">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#123f24] text-white hover:bg-[#1a4f2e] transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#3D2B1F] text-white hover:bg-[#2B1E16] transition-colors shadow-xs"
             >
               <span>Admin Login</span>
               <ArrowRight className="size-3.5" />
@@ -83,7 +83,7 @@ export function PublicLegalLayout() {
         </div>
 
         {/* Mobile Nav row */}
-        <div className="md:hidden border-t border-[#eee7d5] bg-[#f9f5eb] px-3 py-2 flex items-center gap-1 overflow-x-auto text-xs font-medium scrollbar-none">
+        <div className="md:hidden border-t border-[#E8DFD1] bg-[#FAF8F5] px-3 py-2 flex items-center gap-1 overflow-x-auto text-xs font-medium scrollbar-none">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.path}
@@ -91,7 +91,7 @@ export function PublicLegalLayout() {
               className={({ isActive }) =>
                 `px-2.5 py-1 rounded-md shrink-0 transition-colors ${
                   isActive
-                    ? "bg-[#123f24] text-white shadow-xs"
+                    ? "bg-[#3D2B1F] text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-black/5"
                 }`
               }
@@ -110,14 +110,14 @@ export function PublicLegalLayout() {
       </main>
 
       {/* Public Footer */}
-      <footer className="mt-auto border-t border-[#e2d8c0] bg-[#0c2e1b] text-[#f4eee1] pt-12 pb-8">
+      <footer className="mt-auto border-t border-[#E8DFD1] bg-[#261B14] text-[#FAF6EE] pt-12 pb-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10 border-b border-white/10">
             {/* Col 1: Identity & Address */}
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#c5a84e] to-[#997e30] font-serif-display text-sm font-bold text-[#0c2e1b]">
-                  JSG
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#3D2B1F] p-1 border border-[#C5A059]/30">
+                  <img src="/hand_icon.png" alt="" className="size-full object-contain" />
                 </div>
                 <span className="font-semibold text-sm text-white">
                   {COMPANY_CONFIG.name}

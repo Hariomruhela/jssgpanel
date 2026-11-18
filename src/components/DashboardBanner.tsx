@@ -1,49 +1,50 @@
-import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useLanguage } from "@/lib/language";
+import { useLanguage } from "@/lib/language"
 
-const DashboardBanner = () => {
-  const { t } = useLanguage();
+export function DashboardBanner() {
+  const { t } = useLanguage()
+
   return (
-    <section className="relative min-h-[250px] overflow-hidden rounded-[24px] bg-[#680b0d]">
-      {/* Background pattern */}
-      <div className="pointer-events-none absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,215,120,0.35)_1px,transparent_1px)] bg-[length:35px_35px]" />
-      </div>
+    <section className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] shadow-xs bg-[#FAF6EE] min-h-[130px] md:min-h-[145px]">
+      {/* Background Graphic featuring Marble Temple Arches and Tirthankara Statue */}
+      <div
+        className="absolute inset-0 size-full bg-cover bg-right md:bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/top_dashbord_img.png')" }}
+      />
 
-      {/* Content */}
-      <div className="relative z-10 flex min-h-[250px] items-center px-8 py-8 md:px-10">
-        <div className="max-w-[55%]">
-          <h2 className="text-3xl font-bold text-[#f5d77a] md:text-[34px]">
-            {t("Jai Jinendra!")}
-          </h2>
+      {/* Soft warm gradient on the left to ensure high readability on all screen resolutions */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#FAF6EE]/95 via-[#FAF6EE]/80 to-transparent md:w-[65%]" />
 
-          <p className="mt-4 text-[16px] leading-8 text-[#f3e6d0] md:text-[18px]">
-            {t("A digital initiative, towards")}
-            <br />
-            {t("uniting our community...")}
-          </p>
+      {/* Banner Content (matches screenshot) */}
+      <div className="relative z-10 flex h-full min-h-[130px] md:min-h-[145px] items-center px-6 py-5 sm:px-8">
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* Gold Ahimsa Hand Icon */}
+          <div className="flex shrink-0 items-center justify-center">
+            <img
+              src="/hand_icon.png"
+              alt="Ahimsa Hand"
+              className="h-12 w-auto object-contain sm:h-14 drop-shadow-xs select-none"
+            />
+          </div>
 
-          <Link
-            to="/registrations"
-            className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[#d5ad4b] px-6 py-3 font-semibold text-[#f5d77a] transition-all duration-300 hover:bg-[#d5ad4b] hover:text-[#680b0d]"
-          >
-            {t("Learn more")}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+          {/* Vertical Divider */}
+          <div className="h-10 w-px bg-[#C5A059]/40 hidden sm:block" />
 
-        {/* Temple image */}
-        <div className="absolute bottom-0 right-5 flex h-full w-[45%] items-end justify-end">
-          <img
-            src="/jain_temple.png"
-            alt={t("Jain Temple")}
-            className="w-[300px] object-contain md:w-[380px]"
-          />
+          {/* Text Details */}
+          <div>
+            <h1 className="font-serif-display text-xl font-bold tracking-tight text-[#2B1E16] sm:text-2xl">
+              {t("JSSG Jain Community")}
+            </h1>
+            <p className="text-xs font-semibold text-[#7C654E] sm:text-sm">
+              {t("Admin Panel")}
+            </p>
+            <p className="mt-1 text-xs text-[#5C4535] font-medium sm:text-[13px]">
+              {t("Together in Faith • United in Service")}
+            </p>
+          </div>
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default DashboardBanner;
+export default DashboardBanner

@@ -180,7 +180,7 @@ export function DataTable<T>({
       {/* Horizontal scroll, not hidden overflow: a wide table (this one has
           seven columns) would otherwise clip its rightmost Actions column and
           leave the buttons unreachable on narrow screens. */}
-      <div className="overflow-x-auto rounded-xl border border-[rgba(150,120,55,0.2)] bg-[#fcfaf5]/60">
+      <div className="overflow-x-auto rounded-xl border border-[#E8DFD1] bg-white shadow-2xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">

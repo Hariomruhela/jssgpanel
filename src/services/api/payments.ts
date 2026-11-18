@@ -7,6 +7,7 @@ import type {
   PaymentListParams,
   PaymentListResult,
   PaymentRecord,
+  PaymentSettings,
   PaymentStatus,
   PaymentSummaryData,
   PaymentTransaction,
@@ -80,23 +81,52 @@ export async function getGroupObligationDetail(
   return unwrapItem<GroupPaymentDetail>(payload)
 }
 
-/** WORKFLOW A: Create Razorpay Checkout order for Super Admin. */
+/** WORKFLOW A: Create Razorpay Checkout order for Super Admin (full or partial amount). */
 export async function createGroupCheckoutOrder(
   groupId: string,
-  billingPeriod?: string
+  optionsOrBillingPeriod?: string | { amount?: number; billingPeriod?: string }
 ): Promise<GroupPaymentOrderCreateResponse> {
+  const options =
+    typeof optionsOrBillingPeriod === "string"
+      ? { billingPeriod: optionsOrBillingPeriod }
+      : optionsOrBillingPeriod
+
   const query = new URLSearchParams()
-  if (billingPeriod) query.set("billing_period", billingPeriod)
+  if (options?.billingPeriod) query.set("billing_period", options.billingPeriod)
+  if (options?.amount) query.set("amount", String(options.amount))
   const qStr = query.toString() ? `?${query.toString()}` : ""
 
   const payload = await apiRequest<ApiEnvelope<GroupPaymentOrderCreateResponse>>(
     `${BASE}/groups/${encodeURIComponent(groupId)}/order${qStr}`,
     {
       method: "POST",
+      body: options?.amount
+        ? JSON.stringify({ amount: options.amount, billing_period: options?.billingPeriod })
+        : undefined,
       auth: true,
     }
   )
   return unwrapItem<GroupPaymentOrderCreateResponse>(payload)
+}
+
+/** Global payment module configuration from `GET /api/v1/payments/settings`. */
+export async function getPaymentSettings(): Promise<PaymentSettings> {
+  const payload = await apiRequest<ApiEnvelope<PaymentSettings>>(`${BASE}/settings`, {
+    auth: true,
+  })
+  return unwrapItem<PaymentSettings>(payload)
+}
+
+/** Update payment module configuration from `PUT /api/v1/payments/settings`. */
+export async function updatePaymentSettings(
+  settings: Partial<PaymentSettings>
+): Promise<PaymentSettings> {
+  const payload = await apiRequest<ApiEnvelope<PaymentSettings>>(`${BASE}/settings`, {
+    method: "PUT",
+    body: JSON.stringify(settings),
+    auth: true,
+  })
+  return unwrapItem<PaymentSettings>(payload)
 }
 
 /** WORKFLOW A: Submit checkout signature for verification. */

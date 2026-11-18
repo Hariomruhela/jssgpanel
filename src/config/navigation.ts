@@ -1,23 +1,18 @@
 import type { LucideIcon } from "lucide-react"
 import {
- 
   Building2,
   CalendarDays,
-  
+  // FileBarChart,
+  Image as ImageIcon,
   IndianRupee,
   Landmark,
   LayoutDashboard,
-  MapPin,
+  // MapPin,
   Megaphone,
-  
+  // Settings,
   Users,
 } from "lucide-react"
-//  Bell,
-//  CreditCard,
-//   FileBarChart,
- 
-//   ReceiptText,
-//   ShieldCheck,
+
 export interface NavItem {
   title: string
   path: string
@@ -31,45 +26,30 @@ export interface NavSection {
 
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Overview",
-    items: [{ title: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard }],
-  },
-  {
-    title: "Members",
+    title: "Menu",
     items: [
-      { title: "Member Management", path: "/admin/members", icon: Users },
-      // { title: "Registration Approval", path: "/admin/registrations", icon: UserCheck },
-      { title: "Post Holder Management", path: "/admin/post-holders", icon: Landmark },
-      { title: "Group Management", path: "/admin/groups", icon: Building2 },
-      // { title: "Location Management", path: "/admin/locations", icon: MapPin },
-    ],
-  },
-  {
-    title: "Community",
-    items: [
-      // { title: "Community Information", path: "/admin/community", icon: FileText },
-      { title: "Events Management", path: "/admin/events", icon: CalendarDays },
-      { title: "Jain Tirth Management", path: "/admin/jain-tirths", icon: MapPin },
-      // { title: "News & Announcements", path: "/admin/news", icon: Newspaper },
-      // { title: "Notifications", path: "/admin/notifications", icon: Bell },
-      { title: "Advertisements", path: "/admin/advertisements", icon: Megaphone },
+      { title: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
+      { title: "Members", path: "/admin/members", icon: Users },
+      { title: "Events", path: "/admin/events", icon: CalendarDays },
+      { title: "Advertisement", path: "/admin/advertisements", icon: Megaphone },
+      { title: "Jain Tirth", path: "/admin/jain-tirths", icon: ImageIcon },
+      // { title: "Reports", path: "/admin/reports", icon: FileBarChart },
+      // { title: "Settings", path: "/admin/roles", icon: Settings },
+      { title: "Post Holders", path: "/admin/post-holders", icon: Landmark },
+      { title: "Groups", path: "/admin/groups", icon: Building2 },
+      // { title: "Tirth Locations", path: "/admin/locations", icon: MapPin },
+      { title: "Payments", path: "/admin/payments", icon: IndianRupee },
     ],
   },
   // {
-  //   title: "Administration",
+  //   title: "Management & Finance",
   //   items: [
-  //     { title: "Roles & Permissions", path: "/admin/roles", icon: ShieldCheck },
-  //     { title: "Reports & Directory", path: "/admin/reports", icon: FileBarChart },
+  //     { title: "Post Holders", path: "/admin/post-holders", icon: Landmark },
+  //     { title: "Groups", path: "/admin/groups", icon: Building2 },
+  //     { title: "Tirth Locations", path: "/admin/locations", icon: MapPin },
+  //     { title: "Payments", path: "/admin/payments", icon: IndianRupee },
   //   ],
   // },
-  {
-    title: "Finance",
-    items: [
-      // { title: "Annual Fee Management", path: "/admin/fees", icon: IndianRupee },
-      { title: "Payment Module", path: "/admin/payments", icon: IndianRupee },
-      // { title: "Payment Reports", path: "/admin/payment-reports", icon: ReceiptText },
-    ],
-  },
 ]
 
 export const ALL_PATHS = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.path))

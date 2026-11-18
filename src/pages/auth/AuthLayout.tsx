@@ -1,112 +1,110 @@
-import { useLanguage } from "@/lib/language"
-import { ArrowLeft } from "lucide-react"
-import { Link, Outlet, useLocation } from "react-router-dom"
+import { Outlet } from "react-router-dom"
+import { LotusIcon } from "@/components/LotusIcon"
 
 export default function AuthLayout() {
-  const location = useLocation()
-  const isLogin = location.pathname === "/login"
-  const { t } = useLanguage()
-
   return (
-    <div className="relative min-h-dvh w-full bg-[#f7f3e9] dark:bg-background">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-48 right-[-120px] h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(197,168,78,0.16)_0%,rgba(197,168,78,0.08)_40%,transparent_70%)] blur-3xl" />
-        <div className="absolute -bottom-48 left-[-80px] h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,rgba(23,72,36,0.1)_0%,transparent_70%)] blur-3xl" />
+    <div className="relative min-h-screen lg:h-screen w-full bg-[#FAF8F5] text-[#2B1E16] lg:overflow-hidden flex flex-col lg:flex-row">
+      {/* =========================================================================
+          LEFT PANE: Clean Temple Scenery + Crisp Vector HTML Typography Overlay
+          The text NEVER cuts on any screen (1024px, 1080p, 4K, laptops, mobile).
+         ========================================================================= */}
+      <aside className="relative hidden lg:flex flex-col justify-between w-[52%] xl:w-[55%] h-full min-h-screen overflow-hidden select-none shrink-0 p-8 xl:p-12">
+        {/* Clean Temple Scenery: object-left ensures the left part (pillar & temple) is shown */}
+        <img
+          src="/background_temple_image.png"
+          alt="Jain Temple Scenery"
+          className="absolute inset-0 size-full object-cover object-center select-none"
+        />
+
+        {/* Smooth warm vignette & ivory fade towards the right login form */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-[#FAF8F5]/60 pointer-events-none" />
+
+        {/* Top spacer */}
+        <div className="relative z-10" />
+
+        {/* Central Branded Typography Overlay (Directly matching the mockup) */}
+        <div className="relative z-10 my-auto ml-auto max-w-[420px] text-center pr-2 xl:pr-6">
+          {/* Ahimsa Hand Icon */}
+          <div className="flex justify-center mb-3">
+            <img
+              src="/hand_icon.png"
+              alt="Ahimsa Hand Symbol"
+              className="h-14 w-auto object-contain drop-shadow-sm select-none"
+            />
+          </div>
+
+          {/* Titles */}
+          <h1 className="font-serif-display text-2xl xl:text-3xl font-bold tracking-tight text-[#2B1E16] drop-shadow-xs">
+            JSSG Jain Community
+          </h1>
+          <p className="mt-1 text-sm xl:text-base font-semibold text-[#6E553F]">
+            Admin Panel
+          </p>
+
+          {/* Tagline */}
+          <div className="mt-3.5 flex items-center justify-center gap-2 text-[10px] xl:text-[11px] font-bold tracking-[0.22em] text-[#8C6D46] uppercase">
+            <span>UNITY</span>
+            <span>•</span>
+            <span>SERVICE</span>
+            <span>•</span>
+            <span>SPIRITUAL GROWTH</span>
+          </div>
+
+          {/* Sacred Jain Forgiveness Quote */}
+          <div className="mt-6 pt-5 border-t border-[#8C6D46]/25">
+            <p className="font-serif-display text-base xl:text-lg italic font-semibold text-[#3D2B1F]">
+              “Micchāmi Dukkaḍaṃ”
+            </p>
+            <p className="mt-1 text-xs xl:text-sm text-[#5C4836] font-medium">
+              May all be happy. May all be free from suffering.
+            </p>
+            <div className="mt-3 flex items-center justify-center gap-2 text-[#B88B4A]">
+              <span className="h-px w-8 bg-[#B88B4A]/50" />
+              <LotusIcon className="size-3.5 text-[#B88B4A]" />
+              <span className="h-px w-8 bg-[#B88B4A]/50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom subtle copyright note */}
+        <div className="relative z-10 flex items-center justify-between text-[11px] text-[#4A3828]/80 font-medium">
+          <p>© {new Date().getFullYear()} JSSG Jain Community</p>
+          <p>Federation Portal</p>
+        </div>
+      </aside>
+
+      {/* MOBILE TOP BANNER: For screens < 1024px */}
+      <div className="w-full lg:hidden relative aspect-[16/9] max-h-[200px] shrink-0 overflow-hidden bg-[#FAF8F5] border-b border-[#E8DFD1]/80">
+        <img
+          src="/background_temple_image.png"
+          alt="JSSG Jain Community"
+          className="size-full object-cover object-left select-none"
+        />
+        <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-white text-center p-4">
+          <img src="/hand_icon.png" alt="" className="size-8 object-contain mb-1 drop-shadow" />
+          <h2 className="font-serif-display text-lg font-bold drop-shadow">JSSG Jain Community</h2>
+          <p className="text-xs text-white/90">Admin Panel</p>
+        </div>
       </div>
 
-      <div className="relative grid min-h-dvh w-full lg:grid-cols-2">
-        <aside className="relative hidden flex-col overflow-hidden border-r border-white/10 bg-[#0e351f] lg:flex">
+      {/* =========================================================================
+          RIGHT PANE: 45% Width, 100vh Height (Login Card + Watermark)
+         ========================================================================= */}
+      <main className="relative flex-1 lg:h-full flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-[#FAF8F5] overflow-y-auto">
+        {/* Right side Ahimsa Hand Watermark (Using user's Login_backgorund_Hand.png) */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-[240px] sm:w-[320px] xl:w-[400px] hidden md:flex items-center justify-end pr-2 select-none opacity-85">
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jain_Temple_of_Ranakpur_01.jpg/1920px-Jain_Temple_of_Ranakpur_01.jpg"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 size-full object-cover"
-            onError={(e) => {
-              // offline / blocked CDN → fall back to the bundled copy
-              if (!e.currentTarget.src.endsWith("/jain_temple.png")) {
-                e.currentTarget.src = "/jain_temple.png"
-              }
-            }}
+            src="/Login_backgorund_Hand.png"
+            alt="Ahimsa Hand Watermark"
+            className="max-h-[85%] w-auto object-contain select-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#123f24]/75 via-[#0e351f]/55 to-[#0e351f]/90" />
+        </div>
 
-          <div className="relative flex min-h-full flex-1 flex-col p-8 text-[#f8f4eb]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#a88a38] to-[#c5a84e] font-serif-display text-sm font-semibold text-[#123f24] shadow-md shadow-black/20">
-                  JSG
-                </div>
-                <div className="leading-tight">
-                  <p className="text-base font-semibold">{t("JSSG Federation")}</p>
-                  <p className="text-xs text-[#c9bd9a]">{t("Admin Panel")}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-auto space-y-3 pt-6 text-xs text-[#c9bd9a]/90">
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-[#c9bd9a]/80">
-                <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                <span>•</span>
-                <Link to="/terms-and-conditions" className="hover:text-white transition-colors">Terms</Link>
-                <span>•</span>
-                <Link to="/refund-policy" className="hover:text-white transition-colors">Refund</Link>
-                <span>•</span>
-                <Link to="/contact-us" className="hover:text-white transition-colors">Contact</Link>
-              </div>
-              <div className="flex items-center justify-between">
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 transition-colors hover:bg-white/10"
-                >
-                  <ArrowLeft className="size-3.5" />
-                  {t("Go to dashboard")}
-                </Link>
-                <p>© {new Date().getFullYear()} {t("JSSG Federation")}</p>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-          <div className="absolute right-4 top-4 flex items-center gap-2 lg:hidden">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(150,120,55,0.3)] bg-[#fcfaf5]/80 px-2.5 py-1 text-xs text-[#174824] shadow-sm backdrop-blur transition-colors hover:bg-[#f3ecdb] dark:border-input dark:bg-background/80"
-            >
-              <ArrowLeft className="size-3.5" />
-              {t("Dashboard")}
-            </Link>
-          </div>
-
-          <div className="w-full max-w-md space-y-6">
-            <div className="space-y-2 text-center lg:text-left">
-              <p className="font-serif-display text-2xl leading-tight tracking-tight text-[#174824] dark:text-[#d7e6cf] sm:text-3xl">
-                {isLogin ? t("Welcome Admin") : t("Create a new account")}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {isLogin
-                  ? t("Enter your credentials to access the dashboard")
-                  : t("Fill in your details to gain access to the federation admin panel")}
-              </p>
-            </div>
-
-            <Outlet />
-
-            {/* Public Compliance / Legal footer for mobile and right side */}
-            <div className="pt-4 border-t border-[#e2d8c0]/70 dark:border-border/40 text-center">
-              <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                <Link to="/privacy-policy" className="hover:text-foreground hover:underline transition-colors">Privacy Policy</Link>
-                <span>•</span>
-                <Link to="/terms-and-conditions" className="hover:text-foreground hover:underline transition-colors">Terms</Link>
-                <span>•</span>
-                <Link to="/refund-policy" className="hover:text-foreground hover:underline transition-colors">Refund Policy</Link>
-                <span>•</span>
-                <Link to="/contact-us" className="hover:text-foreground hover:underline transition-colors">Contact Us</Link>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+        {/* The Login Card container */}
+        <div className="relative z-10 w-full max-w-[370px] sm:max-w-[390px] my-auto">
+          <Outlet />
+        </div>
+      </main>
     </div>
   )
 }

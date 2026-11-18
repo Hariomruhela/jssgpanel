@@ -100,11 +100,21 @@ export default function SignupPage() {
   }
 
   return (
-    <Card className="border-[rgba(150,120,55,0.28)] shadow-[0_20px_60px_rgba(47,37,20,0.08)]">
-      <CardHeader className="gap-2 pb-0">
-        <CardTitle className="font-serif-display text-xl tracking-tight text-[#174824] dark:text-[#d7e6cf] sm:text-2xl">
-          {t("Sign up")}
+    <Card className="border-[#E8DFD1] bg-white/95 shadow-[0_15px_45px_rgba(43,30,22,0.07)] rounded-2xl backdrop-blur-md">
+      <CardHeader className="gap-2 pb-0 text-center">
+        <div className="flex justify-center mb-1">
+          <img
+            src="/hand_icon.png"
+            alt="Hand Icon"
+            className="h-8 w-auto object-contain select-none"
+          />
+        </div>
+        <CardTitle className="font-serif-display text-2xl font-bold tracking-tight text-[#2B1E16]">
+          {t("Create Account")}
         </CardTitle>
+        <p className="text-xs text-[#7A6C5F]">
+          {t("Fill in your details to gain access to the admin panel")}
+        </p>
       </CardHeader>
 
       <form onSubmit={handleSubmit} noValidate>
@@ -247,7 +257,7 @@ export default function SignupPage() {
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4 pt-0">
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          <Button type="submit" size="lg" className="w-full bg-[#3D2B1F] hover:bg-[#2B1E16] text-white" disabled={loading}>
             {loading ? t("Creating account...") : t("Sign up")}
           </Button>
 
@@ -255,7 +265,7 @@ export default function SignupPage() {
             {t("Already have an account?")}{" "}
             <Link
               to="/login"
-              className="font-medium text-[#174824] underline-offset-4 hover:underline dark:text-[#d7e6cf]"
+              className="font-medium text-[#8C6D46] hover:text-[#3D2B1F] underline-offset-4 hover:underline"
             >
               {t("Log in")}
             </Link>
