@@ -1,19 +1,19 @@
-import { useCallback, useRef, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
   AlertCircle,
   CalendarClock,
-  Check,
-  Copy,
   CreditCard,
   Eye,
+  FileSpreadsheet,
+  Filter,
   Plus,
+  Printer,
   ReceiptText,
   RefreshCw,
   Search,
   Settings,
-  Share2,
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,32 +22,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { DataTable, type Column } from "@/components/DataTable"
 import { PageHeader } from "@/components/PageHeader"
 import { StatusBadge } from "@/components/StatusBadge"
 import { useData } from "@/lib/useData"
+import { downloadCSV } from "@/lib/csv"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format"
 import { getErrorMessage } from "@/lib/apiClient"
-import { loadRazorpayScript } from "@/lib/razorpay"
 import { PaymentSettingsTab } from "./PaymentSettingsTab"
 import type {
-  GroupObligationRecord,
-  GroupPaymentLinkResponse,
   PaymentRecord,
 } from "@/types"
 import {
-  createGroupCheckoutOrder,
-  createGroupPaymentLink,
-  getGroupObligationDetail,
   getPaymentById,
   getPaymentDashboardSummary,
   listGroupObligations,
   listPayments,
-  verifyGroupCheckoutPayment,
 } from "@/services/api/payments"
 
 const TRANSACTIONS_PAGE_SIZE = 8
-const GROUPS_PAGE_SIZE = 9
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function shortId(value: string | null | undefined): string {
@@ -75,6 +77,12 @@ declare global {
 export default function PaymentsPage() {
   const summary = useData(useCallback(() => getPaymentDashboardSummary(), []))
   const [activeTab, setActiveTab] = useState("status")
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const handleSettingsUpdated = () => {
+    summary.reload()
+    setRefreshKey((k) => k + 1)
+  }
 
   const handleRecordPayment = () => {
     toast.info("Select a group below to record payments via Super Admin Checkout or Payment Link.")
@@ -130,16 +138,20 @@ export default function PaymentsPage() {
         <TabsList>
           <TabsTrigger value="status">Group-wise Status</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="reports">Payment Reports</TabsTrigger>
           <TabsTrigger value="settings">Payment Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="status" className="pt-2">
-          <GroupStatusTab onLedgerUpdated={summary.reload} />
+          <GroupStatusTab key={`status-${refreshKey}`} onLedgerUpdated={summary.reload} />
         </TabsContent>
         <TabsContent value="transactions" className="pt-2">
           <TransactionsTab />
         </TabsContent>
+        <TabsContent value="reports" className="pt-2">
+          <GroupReportsTab key={`reports-${refreshKey}`} />
+        </TabsContent>
         <TabsContent value="settings" className="pt-2">
-          <PaymentSettingsTab onSettingsUpdated={() => summary.reload()} />
+          <PaymentSettingsTab onSettingsUpdated={handleSettingsUpdated} />
         </TabsContent>
       </Tabs>
     </div>
@@ -148,25 +160,18 @@ export default function PaymentsPage() {
 
 function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Modals state
-  const [checkoutTarget, setCheckoutTarget] = useState<GroupObligationRecord | null>(null)
-  const [linkTarget, setLinkTarget] = useState<GroupObligationRecord | null>(null)
-  const [detailTargetId, setDetailTargetId] = useState<string | null>(null)
-
   const groupsData = useData(
     useCallback(
-      () => listGroupObligations({ search: searchQuery, page, pageSize: GROUPS_PAGE_SIZE }),
-      [searchQuery, page]
+      () => listGroupObligations({ search: searchQuery, pageSize: 100, fetchAll: true }),
+      [searchQuery]
     )
   )
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setPage(1)
     setSearchQuery(search.trim())
   }
 
@@ -176,7 +181,6 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
   }
 
   const rows = groupsData.data?.obligations ?? []
-  const pagination = groupsData.data?.pagination
 
   return (
     <div className="space-y-4">
@@ -204,7 +208,6 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
               onClick={() => {
                 setSearch("")
                 setSearchQuery("")
-                setPage(1)
               }}
             >
               Clear
@@ -234,11 +237,11 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
       )}
 
       {groupsData.loading && !groupsData.data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardHeader className="h-24 bg-muted/30" />
-              <CardContent className="h-36 py-4" />
+              <CardHeader className="h-16 bg-muted/30" />
+              <CardContent className="h-28 py-3" />
             </Card>
           ))}
         </div>
@@ -257,54 +260,70 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((group) => {
             const isPaid = group.status === "PAID"
             const isNotApplicable = group.status === "NOT_APPLICABLE"
             const canCollect = !isPaid && !isNotApplicable && group.pending_amount > 0
+            const memberCount =
+              typeof group.member_count === "number" && !Number.isNaN(group.member_count)
+                ? group.member_count
+                : typeof (group as any).member_count_snapshot === "number"
+                ? (group as any).member_count_snapshot
+                : group.expected_amount && group.rate_per_member
+                ? Math.round(group.expected_amount / group.rate_per_member)
+                : 0
 
             return (
-              <Card key={group.id} className="flex flex-col justify-between overflow-hidden shadow-xs">
-                <CardHeader className="pb-3">
+              <Card key={group.id} className="flex flex-col justify-between overflow-hidden shadow-xs hover:border-primary/40 transition-colors">
+                <CardHeader className="p-3.5 pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <CardTitle className="truncate font-semibold text-base" title={group.group_name}>
+                      <CardTitle className="truncate font-semibold text-sm sm:text-base" title={group.group_name}>
                         {group.group_name}
                       </CardTitle>
-                      <CardDescription className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-                        <Users className="size-3.5 text-muted-foreground" />
-                        <span>
-                          {group.member_count} eligible {group.member_count === 1 ? "member" : "members"}
-                        </span>
-                        <span>•</span>
-                        <span>₹{group.rate_per_member}/member</span>
-                        <span>•</span>
-                        <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                          <CalendarClock className="size-3 text-primary" />
-                          Due: {formatDate(group.due_date || "2027-03-31")}
-                        </span>
+                      <CardDescription className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+                        <CalendarClock className="size-3 text-primary shrink-0" />
+                        <span>Due: {formatDate(group.due_date || "2027-03-31")}</span>
                       </CardDescription>
                     </div>
                     <StatusBadge status={group.status} />
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4 pb-3">
+                <CardContent className="p-3.5 pt-0 space-y-2.5">
+                  {/* Total Members & Calculation Formula */}
+                  <div className="rounded-md bg-muted/40 p-2 text-xs space-y-1 border">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
+                        <Users className="size-3 text-primary" />
+                        Total Members:
+                      </span>
+                      <span className="font-semibold text-foreground text-xs">{memberCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] border-t border-border/50 pt-1">
+                      <span className="text-muted-foreground">Calculation:</span>
+                      <span className="font-mono text-foreground font-medium">
+                        {memberCount} × ₹{group.rate_per_member} = <span className="font-bold text-primary">{formatCurrency(group.expected_amount)}</span>
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Financial Metrics */}
-                  <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/30 p-2.5 text-center">
+                  <div className="grid grid-cols-3 gap-1 rounded-md bg-muted/20 p-2 text-center text-xs">
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Expected</p>
-                      <p className="font-semibold text-xs sm:text-sm">{formatCurrency(group.expected_amount)}</p>
+                      <p className="text-[10px] text-muted-foreground">Expected</p>
+                      <p className="font-semibold text-xs">{formatCurrency(group.expected_amount)}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Collected</p>
-                      <p className="font-semibold text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">
+                      <p className="text-[10px] text-muted-foreground">Collected</p>
+                      <p className="font-semibold text-xs text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(group.collected_amount)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Outstanding</p>
-                      <p className="font-semibold text-xs sm:text-sm text-rose-600 dark:text-rose-400">
+                      <p className="text-[10px] text-muted-foreground">Outstanding</p>
+                      <p className="font-semibold text-xs text-rose-600 dark:text-rose-400">
                         {formatCurrency(group.pending_amount)}
                       </p>
                     </div>
@@ -312,540 +331,611 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
 
                   {/* Progress Bar */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Collection Progress</span>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Collection</span>
                       <span className="font-medium text-foreground">{group.collection_percentage}%</span>
                     </div>
-                    <Progress value={group.collection_percentage} className="h-2" />
+                    <Progress value={group.collection_percentage} className="h-1.5" />
                   </div>
                 </CardContent>
 
-                <CardFooter className="flex flex-col gap-2 pt-2 border-t bg-muted/10">
-                  <div className="grid w-full grid-cols-2 gap-2">
-                    {/* WORKFLOW A: Pay Now (Navigates to Dedicated Checkout Page) */}
-                    <Button
-                      size="sm"
-                      disabled={!canCollect}
-                      onClick={() => navigate(`/admin/payments/pay/${group.group_id}`)}
-                      className="w-full"
-                    >
-                      <CreditCard className="size-4" />
-                      Pay Now
-                    </Button>
-
-                    {/* WORKFLOW B: Share Payment Link (Group Admin Link) */}
+                <CardFooter className="p-3 pt-2 border-t bg-muted/10">
+                  {canCollect ? (
+                    <div className="flex items-center gap-2 w-full">
+                      <Button
+                        size="sm"
+                        className="flex-1 h-8 text-xs bg-[#0f5132] hover:bg-[#0c4027] text-white gap-1.5"
+                        onClick={() => navigate(`/admin/payments/pay/${group.group_id}`)}
+                      >
+                        <CreditCard className="size-3.5" />
+                        Pay Now
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-8 text-xs gap-1.5"
+                        onClick={() => navigate(`/admin/payments/pay/${group.group_id}`)}
+                      >
+                        <Eye className="size-3.5" />
+                        Ledger & History
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!canCollect}
-                      onClick={() => setLinkTarget(group)}
-                      className="w-full"
+                      className="w-full h-8 text-xs gap-1.5"
+                      onClick={() => navigate(`/admin/payments/pay/${group.group_id}`)}
                     >
-                      <Share2 className="size-4" />
-                      Share Link
+                      <Eye className="size-3.5" />
+                      View Ledger & History
                     </Button>
-                  </div>
-
-                  {/* View Details */}
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="w-full text-muted-foreground hover:text-foreground"
-                    onClick={() => setDetailTargetId(group.group_id)}
-                  >
-                    <Eye className="size-3.5 mr-1" />
-                    View Ledger & History
-                  </Button>
+                  )}
                 </CardFooter>
               </Card>
             )
           })}
         </div>
       )}
-
-      {/* Pagination Controls */}
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
-          <p>
-            Showing {(page - 1) * GROUPS_PAGE_SIZE + 1} to{" "}
-            {Math.min(page * GROUPS_PAGE_SIZE, pagination.total)} of {pagination.total} groups
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <span className="px-2">
-              Page {page} of {pagination.total_pages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= pagination.total_pages}
-              onClick={() => setPage((p) => Math.min(pagination.total_pages, p + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Pay Now Checkout Modal */}
-      <PayNowModal
-        open={Boolean(checkoutTarget)}
-        onOpenChange={(open) => !open && setCheckoutTarget(null)}
-        group={checkoutTarget}
-        onSuccess={() => {
-          setCheckoutTarget(null)
-          handleRefresh()
-        }}
-      />
-
-      {/* Share Payment Link Modal */}
-      <SharePaymentLinkModal
-        open={Boolean(linkTarget)}
-        onOpenChange={(open) => !open && setLinkTarget(null)}
-        group={linkTarget}
-        onLinkCreated={handleRefresh}
-      />
-
-      {/* Group Obligation Details Modal */}
-      <GroupPaymentDetailsModal
-        groupId={detailTargetId}
-        onOpenChange={(open) => !open && setDetailTargetId(null)}
-      />
     </div>
   )
 }
 
-function PayNowModal({
-  open,
-  onOpenChange,
-  group,
-  onSuccess,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  group: GroupObligationRecord | null
-  onSuccess: () => void
-}) {
-  const [submitting, setSubmitting] = useState(false)
+function GroupReportsTab() {
+  const navigate = useNavigate()
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("ALL")
 
-  if (!group) return null
-
-  const handleProceedPayment = async () => {
-    setSubmitting(true)
-    try {
-      // 1. Ensure Razorpay Checkout script is loaded
-      const isLoaded = await loadRazorpayScript()
-      if (!isLoaded || !window.Razorpay) {
-        toast.error("Could not load Razorpay SDK. Please check your internet connection.")
-        setSubmitting(false)
-        return
-      }
-
-      // 2. Create Razorpay order on backend for current pending amount
-      const order = await createGroupCheckoutOrder(group.group_id)
-
-      // 3. Open Razorpay Checkout modal
-      const options = {
-        key: order.razorpay_key_id,
-        amount: Math.round(order.amount * 100),
-        currency: order.currency,
-        name: "JSSG Federation",
-        description: `Annual Contribution - ${order.group_name}`,
-        order_id: order.razorpay_order_id,
-        handler: async (response: {
-          razorpay_payment_id: string
-          razorpay_order_id: string
-          razorpay_signature: string
-        }) => {
-          try {
-            toast.loading("Verifying payment with gateway...", { id: "checkout-verify" })
-            await verifyGroupCheckoutPayment(group.group_id, {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            })
-            toast.success(`Payment of ${formatCurrency(order.amount)} verified successfully!`, {
-              id: "checkout-verify",
-            })
-            onSuccess()
-          } catch (err) {
-            toast.error(getErrorMessage(err, "Payment signature verification failed."), {
-              id: "checkout-verify",
-            })
-          }
-        },
-        prefill: {
-          name: "Super Admin",
-          email: "admin@jssg.org",
-        },
-        theme: {
-          color: "#991B1B",
-        },
-        modal: {
-          ondismiss: () => {
-            setSubmitting(false)
-            toast.info("Payment checkout cancelled.")
-          },
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.on("payment.failed", (response: any) => {
-        toast.error(`Payment failed: ${response.error?.description || "Unknown error"}`)
-        setSubmitting(false)
-      })
-      rzp.open()
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Could not initiate payment order."))
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Super Admin – Pay Now</DialogTitle>
-          <DialogDescription>
-            Pay the outstanding contribution for <strong>{group.group_name}</strong>
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Eligible Members:</span>
-              <span className="font-medium">{group.member_count}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Rate Per Member:</span>
-              <span className="font-medium">₹{group.rate_per_member}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Total Expected:</span>
-              <span className="font-medium">{formatCurrency(group.expected_amount)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Already Collected:</span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                {formatCurrency(group.collected_amount)}
-              </span>
-            </div>
-            <div className="flex justify-between border-t pt-2 font-semibold text-sm">
-              <span>Payable Now (Outstanding):</span>
-              <span className="text-rose-600 dark:text-rose-400">{formatCurrency(group.pending_amount)}</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Razorpay Checkout supports UPI, Net Banking, and Cards. Upon successful payment capture, the common ledger
-            will be updated immediately.
-          </p>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleProceedPayment} disabled={submitting}>
-            <CreditCard className="size-4 mr-1" />
-            {submitting ? "Opening Checkout…" : `Proceed to Pay ${formatCurrency(group.pending_amount)}`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function SharePaymentLinkModal({
-  open,
-  onOpenChange,
-  group,
-  onLinkCreated,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  group: GroupObligationRecord | null
-  onLinkCreated: () => void
-}) {
-  const [loading, setLoading] = useState(false)
-  const [linkData, setLinkData] = useState<GroupPaymentLinkResponse | null>(null)
-  const [copied, setCopied] = useState(false)
-
-  const fetchOrCreateLink = useCallback(async () => {
-    if (!group) return
-    setLoading(true)
-    try {
-      const res = await createGroupPaymentLink(group.group_id)
-      setLinkData(res)
-      onLinkCreated()
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Could not generate payment link."))
-    } finally {
-      setLoading(false)
-    }
-  }, [group, onLinkCreated])
-
-  const handleOpen = (nextOpen: boolean) => {
-    if (nextOpen && group) {
-      fetchOrCreateLink()
-    } else {
-      setLinkData(null)
-      setCopied(false)
-    }
-    onOpenChange(nextOpen)
-  }
-
-  const handleCopy = () => {
-    if (!linkData?.short_url) return
-    navigator.clipboard.writeText(linkData.short_url)
-    setCopied(true)
-    toast.success("Payment link copied to clipboard!")
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleWhatsAppShare = () => {
-    if (!linkData?.short_url || !group) return
-    const text = encodeURIComponent(
-      `*JSSG Federation Annual Contribution*\n` +
-        `Group: ${group.group_name}\n` +
-        `Outstanding Amount: ${formatCurrency(linkData.amount)}\n\n` +
-        `Please complete the payment using this official link:\n${linkData.short_url}`
+  const groupsData = useData(
+    useCallback(
+      () => listGroupObligations({ pageSize: 100, fetchAll: true }),
+      []
     )
-    window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank")
+  )
+
+  const allObligations = groupsData.data?.obligations ?? []
+
+  // Filter groups according to status and search query
+  const filteredGroups = useMemo(() => {
+    let list = allObligations
+    if (statusFilter !== "ALL") {
+      list = list.filter((g) => g.status === statusFilter)
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter((g) => g.group_name.toLowerCase().includes(q))
+    }
+    return list
+  }, [allObligations, statusFilter, search])
+
+  // Count per status category for pill counters
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: allObligations.length, PAID: 0, UNPAID: 0, PARTIAL: 0, NOT_APPLICABLE: 0 }
+    for (const g of allObligations) {
+      if (g.status === "PAID") counts.PAID += 1
+      else if (g.status === "UNPAID") counts.UNPAID += 1
+      else if (g.status === "PARTIAL") counts.PARTIAL += 1
+      else if (g.status === "NOT_APPLICABLE") counts.NOT_APPLICABLE += 1
+    }
+    return counts
+  }, [allObligations])
+
+  // Summary aggregates of filtered records
+  const totals = useMemo(() => {
+    return filteredGroups.reduce(
+      (acc, g) => {
+        const count =
+          typeof g.member_count === "number" && !Number.isNaN(g.member_count)
+            ? g.member_count
+            : typeof (g as any).member_count_snapshot === "number"
+            ? (g as any).member_count_snapshot
+            : g.expected_amount && g.rate_per_member
+            ? Math.round(g.expected_amount / g.rate_per_member)
+            : 0
+
+        acc.groupsCount += 1
+        acc.membersCount += count
+        acc.expected += Number(g.expected_amount) || 0
+        acc.collected += Number(g.collected_amount) || 0
+        acc.outstanding += Number(g.pending_amount) || 0
+        return acc
+      },
+      { groupsCount: 0, membersCount: 0, expected: 0, collected: 0, outstanding: 0 }
+    )
+  }, [filteredGroups])
+
+  // Excel / CSV Export (Exports ONLY filtered data!)
+  const handleDownloadExcel = () => {
+    if (filteredGroups.length === 0) {
+      toast.warning("No records found to export with the selected filter.")
+      return
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const filename = `Group_Payment_Report_${statusFilter}_${dateStr}.csv`
+    const headers = [
+      "S.No.",
+      "Group Name",
+      "Status",
+      "Total Members",
+      "Rate Per Member (Rs)",
+      "Expected Amount (Rs)",
+      "Collected Amount (Rs)",
+      "Outstanding Amount (Rs)",
+      "Collection %",
+      "Due Date",
+      "Billing Period",
+    ]
+
+    const rows = filteredGroups.map((g, index) => {
+      const count =
+        typeof g.member_count === "number" && !Number.isNaN(g.member_count)
+          ? g.member_count
+          : typeof (g as any).member_count_snapshot === "number"
+          ? (g as any).member_count_snapshot
+          : g.expected_amount && g.rate_per_member
+          ? Math.round(g.expected_amount / g.rate_per_member)
+          : 0
+
+      return [
+        index + 1,
+        g.group_name,
+        g.status,
+        count,
+        g.rate_per_member,
+        g.expected_amount,
+        g.collected_amount,
+        g.pending_amount,
+        `${g.collection_percentage}%`,
+        g.due_date || "2027-03-31",
+        g.billing_period,
+      ]
+    })
+
+    // Append Totals row to the excel file
+    rows.push([
+      "TOTAL",
+      `Total Groups: ${totals.groupsCount}`,
+      "",
+      totals.membersCount,
+      "",
+      totals.expected,
+      totals.collected,
+      totals.outstanding,
+      totals.expected > 0 ? `${Math.round((totals.collected / totals.expected) * 100)}%` : "0%",
+      "",
+      "",
+    ])
+
+    downloadCSV(filename, headers, rows)
+    toast.success(`Exported ${filteredGroups.length} filtered records to Excel!`)
   }
 
-  if (!group) return null
+  // Print Report (Prints ONLY filtered data!)
+  const handlePrint = () => {
+    if (filteredGroups.length === 0) {
+      toast.warning("No records to print with current filter.")
+      return
+    }
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Share Payment Link – Group Admin</DialogTitle>
-          <DialogDescription>
-            Generate a hosted Razorpay payment link for <strong>{group.group_name}</strong>
-          </DialogDescription>
-        </DialogHeader>
+    const printWindow = window.open("", "_blank", "width=1000,height=800")
+    if (!printWindow) {
+      toast.error("Please allow popups in your browser to print the report.")
+      return
+    }
 
-        <div className="space-y-4 py-2">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <RefreshCw className="size-6 animate-spin" />
-              <p>Generating Razorpay Payment Link…</p>
+    const printDate = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+
+    const rowsHtml = filteredGroups
+      .map((g, idx) => {
+        const count =
+          typeof g.member_count === "number" && !Number.isNaN(g.member_count)
+            ? g.member_count
+            : typeof (g as any).member_count_snapshot === "number"
+            ? (g as any).member_count_snapshot
+            : g.expected_amount && g.rate_per_member
+            ? Math.round(g.expected_amount / g.rate_per_member)
+            : 0
+
+        const statusColor =
+          g.status === "PAID"
+            ? "#0f5132"
+            : g.status === "UNPAID"
+            ? "#842029"
+            : g.status === "PARTIAL"
+            ? "#664d03"
+            : "#495057"
+
+        return `
+          <tr>
+            <td style="text-align: center;">${idx + 1}</td>
+            <td style="font-weight: 600;">${g.group_name}</td>
+            <td style="text-align: center;"><span style="color: ${statusColor}; font-weight: 700; font-size: 11px;">${g.status}</span></td>
+            <td style="text-align: center;">${count}</td>
+            <td style="text-align: right;">₹${Number(g.rate_per_member).toLocaleString("en-IN")}</td>
+            <td style="text-align: right;">₹${Number(g.expected_amount).toLocaleString("en-IN")}</td>
+            <td style="text-align: right; color: #0f5132; font-weight: 600;">₹${Number(g.collected_amount).toLocaleString("en-IN")}</td>
+            <td style="text-align: right; color: #842029; font-weight: 600;">₹${Number(g.pending_amount).toLocaleString("en-IN")}</td>
+            <td style="text-align: center; font-weight: 600;">${g.collection_percentage}%</td>
+          </tr>
+        `
+      })
+      .join("")
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>JSSG Federation – Group Payment Report</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 11px; color: #111; margin: 0; padding: 12px; }
+            .header { border-bottom: 2px solid #0f5132; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+            .title { font-size: 18px; font-weight: bold; color: #0f5132; margin: 0; }
+            .subtitle { font-size: 12px; color: #555; margin-top: 4px; }
+            .meta { text-align: right; font-size: 11px; color: #444; }
+            .summary-boxes { display: flex; gap: 8px; margin-bottom: 12px; }
+            .box { border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; flex: 1; text-align: center; background: #fafafa; }
+            .box-label { font-size: 10px; color: #666; text-transform: uppercase; }
+            .box-val { font-size: 14px; font-weight: bold; margin-top: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }
+            th { background-color: #f1f5f2; color: #1e4620; text-align: left; padding: 6px 8px; border: 1px solid #ccc; font-weight: 700; font-size: 11px; }
+            td { padding: 5px 8px; border: 1px solid #ddd; }
+            tr:nth-child(even) { background-color: #fafafa; }
+            .footer-row td { background-color: #e9ecef; font-weight: bold; border-top: 2px solid #0f5132; }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1 class="title">JSSG Federation – Group Payment Report</h1>
+              <div class="subtitle">
+                Filter Status: <strong>${statusFilter}</strong>
+                ${search ? ` | Search: "${search}"` : ""}
+                | FY: 2026-2027
+              </div>
             </div>
-          ) : linkData ? (
-            <>
-              <div className="rounded-lg border p-3 bg-muted/30 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Group:</span>
-                  <span className="font-medium">{linkData.group_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Payable Amount:</span>
-                  <span className="font-semibold text-rose-600 dark:text-rose-400">
-                    {formatCurrency(linkData.amount)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Link ID:</span>
-                  <span className="font-mono">{linkData.payment_link_id}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Payment Link URL</label>
-                <div className="flex items-center gap-2">
-                  <Input readOnly value={linkData.short_url} className="font-mono text-xs" />
-                  <Button size="icon" variant="outline" onClick={handleCopy} title="Copy Link">
-                    {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Group Admins can open this link directly on mobile devices to pay via UPI, Net Banking, or Cards.
-                Razorpay webhooks will automatically credit the common ledger upon payment completion.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-destructive">Failed to load payment link.</p>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          {linkData && (
-            <Button onClick={handleWhatsAppShare} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Share2 className="size-4 mr-1" />
-              Share on WhatsApp
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function GroupPaymentDetailsModal({
-  groupId,
-  onOpenChange,
-}: {
-  groupId: string | null
-  onOpenChange: (open: boolean) => void
-}) {
-  const detailData = useData(
-    useCallback(() => (groupId ? getGroupObligationDetail(groupId) : Promise.resolve(null)), [groupId])
-  )
-
-  const detail = detailData.data
-  const obligation = detail?.obligation
-  const transactions = detail?.transactions ?? []
-
-  return (
-    <Dialog open={Boolean(groupId)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Group Payment Ledger & History</DialogTitle>
-          <DialogDescription>{obligation ? obligation.group_name : "Payment Ledger"}</DialogDescription>
-        </DialogHeader>
-
-        {detailData.loading ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <RefreshCw className="size-6 animate-spin" />
-            <p>Loading ledger details…</p>
+            <div class="meta">
+              <div>Printed On: ${printDate}</div>
+              <div>Filtered Groups: <strong>${totals.groupsCount}</strong></div>
+            </div>
           </div>
-        ) : obligation ? (
-          <div className="space-y-5">
-            {/* Obligation Snapshot Grid */}
-            <div className="rounded-xl border p-4 bg-muted/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Billing Period {obligation.billing_period}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <CalendarClock className="size-3 text-primary" />
-                    Due: {formatDate(obligation.due_date || "2027-03-31")}
-                  </span>
-                  <StatusBadge status={obligation.status} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Eligible Members</p>
-                  <p className="font-semibold">{obligation.member_count}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Rate / Member</p>
-                  <p className="font-semibold">₹{obligation.rate_per_member}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Expected</p>
-                  <p className="font-semibold">{formatCurrency(obligation.expected_amount)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Collected</p>
-                  <p className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(obligation.collected_amount)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t text-xs">
-                <span className="text-muted-foreground">Outstanding Balance:</span>
-                <span className="font-semibold text-rose-600 dark:text-rose-400 text-sm">
-                  {formatCurrency(obligation.pending_amount)}
-                </span>
-              </div>
+
+          <div class="summary-boxes">
+            <div class="box">
+              <div class="box-label">Filtered Groups</div>
+              <div class="box-val">${totals.groupsCount}</div>
+            </div>
+            <div class="box">
+              <div class="box-label">Total Members</div>
+              <div class="box-val">${totals.membersCount}</div>
+            </div>
+            <div class="box">
+              <div class="box-label">Expected Total</div>
+              <div class="box-val">₹${totals.expected.toLocaleString("en-IN")}</div>
+            </div>
+            <div class="box">
+              <div class="box-label" style="color: #0f5132;">Collected Total</div>
+              <div class="box-val" style="color: #0f5132;">₹${totals.collected.toLocaleString("en-IN")}</div>
+            </div>
+            <div class="box">
+              <div class="box-label" style="color: #842029;">Outstanding Total</div>
+              <div class="box-val" style="color: #842029;">₹${totals.outstanding.toLocaleString("en-IN")}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th>Group Name</th>
+                <th style="width: 80px; text-align: center;">Status</th>
+                <th style="width: 65px; text-align: center;">Members</th>
+                <th style="width: 80px; text-align: right;">Rate / Mbr</th>
+                <th style="width: 95px; text-align: right;">Expected</th>
+                <th style="width: 95px; text-align: right;">Collected</th>
+                <th style="width: 95px; text-align: right;">Outstanding</th>
+                <th style="width: 65px; text-align: center;">Collection %</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+              <tr class="footer-row">
+                <td colspan="3" style="text-align: right; font-weight: bold;">TOTAL (${totals.groupsCount} Groups):</td>
+                <td style="text-align: center;">${totals.membersCount}</td>
+                <td></td>
+                <td style="text-align: right;">₹${totals.expected.toLocaleString("en-IN")}</td>
+                <td style="text-align: right; color: #0f5132;">₹${totals.collected.toLocaleString("en-IN")}</td>
+                <td style="text-align: right; color: #842029;">₹${totals.outstanding.toLocaleString("en-IN")}</td>
+                <td style="text-align: center;">${totals.expected > 0 ? Math.round((totals.collected / totals.expected) * 100) : 0}%</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 300);
+            }
+          </script>
+        </body>
+      </html>
+    `
+
+    printWindow.document.write(html)
+    printWindow.document.close()
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filters & Action Bar */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Status Filter Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground mr-1 flex items-center gap-1">
+                <Filter className="size-3.5" />
+                Status:
+              </span>
+              {[
+                { id: "ALL", label: "All Groups", count: statusCounts.ALL },
+                { id: "PAID", label: "Paid", count: statusCounts.PAID },
+                { id: "UNPAID", label: "Unpaid", count: statusCounts.UNPAID },
+                { id: "PARTIAL", label: "Partial", count: statusCounts.PARTIAL },
+                { id: "NOT_APPLICABLE", label: "N/A", count: statusCounts.NOT_APPLICABLE },
+              ].map((tab) => {
+                const isActive = statusFilter === tab.id
+                return (
+                  <Button
+                    key={tab.id}
+                    variant={isActive ? "default" : "outline"}
+                    size="xs"
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={`h-7 gap-1 text-xs ${
+                      isActive ? "bg-[#0f5132] hover:bg-[#0c4027] text-white" : ""
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </Button>
+                )
+              })}
             </div>
 
-            {/* Active Payment Link (if any) */}
-            {obligation.active_payment_link_url && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center justify-between text-xs">
-                <div className="min-w-0 pr-2">
-                  <p className="font-medium text-foreground">Active Payment Link</p>
-                  <p className="truncate font-mono text-muted-foreground">{obligation.active_payment_link_url}</p>
-                </div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(obligation.active_payment_link_url!)
-                    toast.success("Active link copied!")
-                  }}
-                >
-                  <Copy className="size-3 mr-1" />
-                  Copy
-                </Button>
-              </div>
-            )}
+            {/* Export and Print Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="gap-1.5 h-8 text-xs"
+              >
+                <Printer className="size-3.5" />
+                Print Report
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleDownloadExcel}
+                className="gap-1.5 h-8 text-xs bg-[#0f5132] hover:bg-[#0c4027] text-white"
+              >
+                <FileSpreadsheet className="size-3.5" />
+                Download Excel (CSV)
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => groupsData.reload()}
+                disabled={groupsData.loading}
+                title="Refresh report data"
+                className="h-8 w-8"
+              >
+                <RefreshCw className={`size-3.5 ${groupsData.loading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
 
-            {/* Transactions History */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Payment Transactions ({transactions.length})</h3>
-                {detailData.loading && <span className="text-xs text-muted-foreground">Refreshing…</span>}
-              </div>
-
-              {transactions.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                  No verified payments recorded yet for this group.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3 text-sm"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{tx.transaction_type.replaceAll("_", " ")}</p>
-                          {tx.payment_method && (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase font-mono text-muted-foreground">
-                              {tx.payment_method}
-                            </span>
-                          )}
-                        </div>
-                        <p className="break-all font-mono text-xs text-muted-foreground">
-                          {tx.razorpay_payment_id ?? tx.provider_transaction_id ?? tx.id}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {tx.paid_at ? formatDateTime(tx.paid_at) : formatDateTime(tx.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {tx.amount !== null && (
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(tx.amount)}
-                          </span>
-                        )}
-                        <StatusBadge status={tx.status} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Search bar & Live Filter indicator */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t text-xs">
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search filtered groups by name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+            <div className="text-muted-foreground">
+              Showing <strong>{filteredGroups.length}</strong> of <strong>{allObligations.length}</strong> groups
+              {statusFilter !== "ALL" && (
+                <span className="ml-1 text-primary font-medium">({statusFilter} only)</span>
               )}
             </div>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No ledger found for this group.</p>
-        )}
+        </CardContent>
+      </Card>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Filtered Financial Metrics Summary */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <MiniCard label="Filtered Groups" value={String(totals.groupsCount)} />
+        <MiniCard label="Total Members" value={totals.membersCount.toLocaleString("en-IN")} />
+        <MiniCard label="Expected" value={formatCurrency(totals.expected)} />
+        <MiniCard
+          label="Collected"
+          value={formatCurrency(totals.collected)}
+          tone="text-emerald-600 dark:text-emerald-400"
+        />
+        <MiniCard
+          label="Outstanding"
+          value={formatCurrency(totals.outstanding)}
+          tone="text-rose-600 dark:text-rose-400"
+        />
+      </div>
+
+      {/* Report Table Card */}
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-muted/30 p-3.5 pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-semibold">Group Payment Summary Report</CardTitle>
+              <CardDescription className="text-xs">
+                Active Billing Period 2026-2027 • {filteredGroups.length} records in this view
+              </CardDescription>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Tip: Exporting or printing will reflect this exact filtered view.
+            </p>
+          </div>
+        </CardHeader>
+
+        {groupsData.loading && !groupsData.data ? (
+          <div className="p-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <RefreshCw className="size-4 animate-spin" />
+            Loading group payment report…
+          </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground space-y-1">
+            <ReceiptText className="size-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="font-semibold text-foreground">No groups match the filter</p>
+            <p className="text-xs">Try selecting a different status filter or clearing your search query.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="text-xs">
+                  <TableHead className="w-12 text-center font-bold">#</TableHead>
+                  <TableHead className="font-bold">Group Name</TableHead>
+                  <TableHead className="w-28 text-center font-bold">Status</TableHead>
+                  <TableHead className="w-24 text-center font-bold">Members</TableHead>
+                  <TableHead className="w-28 text-right font-bold">Rate/Mbr</TableHead>
+                  <TableHead className="w-32 text-right font-bold">Expected</TableHead>
+                  <TableHead className="w-32 text-right font-bold">Collected</TableHead>
+                  <TableHead className="w-32 text-right font-bold">Outstanding</TableHead>
+                  <TableHead className="w-32 text-center font-bold">Progress</TableHead>
+                  <TableHead className="w-24 text-right font-bold">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredGroups.map((g, idx) => {
+                  const count =
+                    typeof g.member_count === "number" && !Number.isNaN(g.member_count)
+                      ? g.member_count
+                      : typeof (g as any).member_count_snapshot === "number"
+                      ? (g as any).member_count_snapshot
+                      : g.expected_amount && g.rate_per_member
+                      ? Math.round(g.expected_amount / g.rate_per_member)
+                      : 0
+
+                  return (
+                    <TableRow key={g.id || g.group_id} className="text-xs hover:bg-muted/40 transition-colors">
+                      <TableCell className="text-center font-mono text-muted-foreground text-[11px]">
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">
+                        <div className="leading-tight">
+                          <p className="font-semibold text-xs sm:text-sm">{g.group_name}</p>
+                          <p className="text-[10px] text-muted-foreground">Due: {formatDate(g.due_date || "2027-03-31")}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <StatusBadge status={g.status} />
+                      </TableCell>
+                      <TableCell className="text-center font-mono font-medium">
+                        {count}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        ₹{g.rate_per_member}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-medium">
+                        {formatCurrency(g.expected_amount)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(g.collected_amount)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold text-rose-600 dark:text-rose-400">
+                        {formatCurrency(g.pending_amount)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="w-24 mx-auto space-y-1">
+                          <div className="text-[10px] font-medium text-right text-muted-foreground">
+                            {g.collection_percentage}%
+                          </div>
+                          <Progress value={g.collection_percentage} className="h-1.5" />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          className="h-7 text-xs text-primary hover:text-primary/80"
+                          onClick={() => navigate(`/admin/payments/pay/${g.group_id}`)}
+                        >
+                          View &rarr;
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+              <TableFooter className="bg-muted/60 font-semibold text-xs">
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-bold uppercase tracking-wider text-muted-foreground">
+                    Total ({totals.groupsCount} Groups):
+                  </TableCell>
+                  <TableCell className="text-center font-mono font-bold text-foreground">
+                    {totals.membersCount}
+                  </TableCell>
+                  <TableCell />
+                  <TableCell className="text-right font-mono font-bold text-foreground">
+                    {formatCurrency(totals.expected)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(totals.collected)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                    {formatCurrency(totals.outstanding)}
+                  </TableCell>
+                  <TableCell className="text-center font-mono font-bold">
+                    {totals.expected > 0 ? `${Math.round((totals.collected / totals.expected) * 100)}%` : "0%"}
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+function MiniCard({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
+  return (
+    <Card size="sm" className="p-3">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={`font-heading text-lg font-bold mt-0.5 ${tone}`}>{value}</p>
+    </Card>
   )
 }
 

@@ -13,7 +13,7 @@ export default function AuthLayout() {
         <img
           src="/background_temple_image.png"
           alt="Jain Temple Scenery"
-          className="absolute inset-0 size-full object-cover object-center select-none"
+          className="absolute left-0 top-0 h-screen w-auto max-w-none object-fit  select-none"
         />
 
         {/* Smooth warm vignette & ivory fade towards the right login form */}
@@ -101,7 +101,7 @@ export default function AuthLayout() {
         </div>
 
         {/* The Login Card container */}
-        <div className="relative z-10 w-full max-w-[370px] sm:max-w-[390px] my-auto">
+        <div className="relative z-10 w-full max-w-[370px] sm:max-w-[390px] my-auto ml-0 mr-auto">
           <Outlet />
         </div>
       </main>

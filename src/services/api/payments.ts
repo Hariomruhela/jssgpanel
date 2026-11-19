@@ -30,11 +30,28 @@ export async function getPaymentDashboardSummary(billingPeriod?: string): Promis
   return unwrapItem<PaymentSummaryData>(payload)
 }
 
+function normalizeObligation(raw: any): GroupObligationRecord {
+  const memberCount =
+    typeof raw?.member_count === "number" && !Number.isNaN(raw.member_count)
+      ? raw.member_count
+      : typeof raw?.member_count_snapshot === "number" && !Number.isNaN(raw.member_count_snapshot)
+      ? raw.member_count_snapshot
+      : raw?.expected_amount && raw?.rate_per_member
+      ? Math.round(Number(raw.expected_amount) / Number(raw.rate_per_member))
+      : 0
+
+  return {
+    ...raw,
+    member_count: memberCount,
+  }
+}
+
 export interface GroupObligationListParams {
   billingPeriod?: string
   search?: string
   page?: number
   pageSize?: number
+  fetchAll?: boolean
 }
 
 export interface GroupObligationListResult {
@@ -47,7 +64,7 @@ export async function listGroupObligations(
   params: GroupObligationListParams = {}
 ): Promise<GroupObligationListResult> {
   const page = params.page ?? 1
-  const pageSize = params.pageSize ?? 20
+  const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20))
   const query = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
@@ -55,13 +72,38 @@ export async function listGroupObligations(
   if (params.billingPeriod) query.set("billing_period", params.billingPeriod)
   if (params.search?.trim()) query.set("search", params.search.trim())
 
-  const payload = await apiRequest<ApiEnvelope<GroupObligationRecord[]>>(`${BASE}/groups?${query.toString()}`, {
+  const payload = await apiRequest<ApiEnvelope<any[]>>(`${BASE}/groups?${query.toString()}`, {
     auth: true,
   })
 
+  let rawList = unwrapList<any>(payload)
+  const pagination = payload?.pagination ?? null
+
+  // If fetchAll is requested and there are multiple pages, fetch all remaining pages in parallel
+  if (params.fetchAll && pagination && pagination.total_pages > 1 && page === 1) {
+    const remainingPages = Array.from(
+      { length: pagination.total_pages - 1 },
+      (_, i) => i + 2
+    )
+    const responses = await Promise.all(
+      remainingPages.map((p) => {
+        const pQuery = new URLSearchParams(query)
+        pQuery.set("page", String(p))
+        return apiRequest<ApiEnvelope<any[]>>(`${BASE}/groups?${pQuery.toString()}`, {
+          auth: true,
+        })
+      })
+    )
+    for (const res of responses) {
+      rawList = rawList.concat(unwrapList<any>(res))
+    }
+  }
+
+  const obligations = rawList.map(normalizeObligation)
+
   return {
-    obligations: unwrapList<GroupObligationRecord>(payload),
-    pagination: payload?.pagination ?? null,
+    obligations,
+    pagination,
   }
 }
 
@@ -74,11 +116,15 @@ export async function getGroupObligationDetail(
   if (billingPeriod) query.set("billing_period", billingPeriod)
   const qStr = query.toString() ? `?${query.toString()}` : ""
 
-  const payload = await apiRequest<ApiEnvelope<GroupPaymentDetail>>(
+  const payload = await apiRequest<ApiEnvelope<any>>(
     `${BASE}/groups/${encodeURIComponent(groupId)}${qStr}`,
     { auth: true }
   )
-  return unwrapItem<GroupPaymentDetail>(payload)
+  const detail = unwrapItem<any>(payload)
+  if (detail?.obligation) {
+    detail.obligation = normalizeObligation(detail.obligation)
+  }
+  return detail as GroupPaymentDetail
 }
 
 /** WORKFLOW A: Create Razorpay Checkout order for Super Admin (full or partial amount). */
@@ -123,7 +169,7 @@ export async function updatePaymentSettings(
 ): Promise<PaymentSettings> {
   const payload = await apiRequest<ApiEnvelope<PaymentSettings>>(`${BASE}/settings`, {
     method: "PUT",
-    body: JSON.stringify(settings),
+    body: settings,
     auth: true,
   })
   return unwrapItem<PaymentSettings>(payload)
@@ -142,7 +188,7 @@ export async function verifyGroupCheckoutPayment(
     `${BASE}/groups/${encodeURIComponent(groupId)}/verify`,
     {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
       auth: true,
     }
   )
@@ -171,7 +217,7 @@ export async function createGroupPaymentLink(
 /** Paginated payment history from `GET /api/v1/payments`. */
 export async function listPayments(params: PaymentListParams = {}): Promise<PaymentListResult> {
   const page = params.page ?? 1
-  const pageSize = params.pageSize ?? 20
+  const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20))
   const query = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),

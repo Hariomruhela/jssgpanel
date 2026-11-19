@@ -41,6 +41,19 @@ function todayIso(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 }
 
+function calculateEndDate(startDateStr: string, months: number): string {
+  if (!startDateStr || !months) return startDateStr || todayIso()
+  const parts = startDateStr.split("-").map(Number)
+  if (parts.length !== 3 || parts.some(isNaN)) return startDateStr
+  const [year, month, day] = parts
+  const totalMonths = month - 1 + Number(months)
+  const targetYear = year + Math.floor(totalMonths / 12)
+  const targetMonth = totalMonths % 12
+  const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+  const targetDay = Math.min(day, daysInTargetMonth)
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`
+}
+
 const COVER_IMAGE_WIDTH = 1200
 const COVER_IMAGE_HEIGHT = 628
 const COVER_IMAGE_ASPECT = COVER_IMAGE_WIDTH / COVER_IMAGE_HEIGHT
@@ -130,10 +143,11 @@ export function AdvertisementFormDialog({
         setPersonName(editing.person_name || editing.personName || "")
         setMobileNumber(editing.mobile_number || editing.mobileNumber || "")
         const sDate = editing.start_date?.slice(0, 10) || editing.startDate?.slice(0, 10) || todayIso()
-        const eDate = editing.end_date?.slice(0, 10) || editing.endDate?.slice(0, 10) || todayIso()
+        const months = editing.subscription_months || 1
         setStartDate(sDate)
-        setEndDate(eDate)
-        setSubscriptionMonths(editing.subscription_months || 2)
+        setSubscriptionMonths(months)
+        // Auto-calculate end date from start date & subscription months
+        setEndDate(calculateEndDate(sDate, months))
         setCoverImage({
           file: null,
           preview: resolveImageUrl(editing.cover_image_url || editing.coverImageUrl) || null,
@@ -148,9 +162,10 @@ export function AdvertisementFormDialog({
         setGroupId(defaultGid)
         setPersonName(user?.full_name ?? "")
         setMobileNumber(user?.phone_number ? user.phone_number.replace(/\D/g, "").slice(-10) : "")
+        const initialMonths = 1
+        setSubscriptionMonths(initialMonths)
         setStartDate(todayIso())
-        setEndDate(todayIso())
-        setSubscriptionMonths(2)
+        setEndDate(calculateEndDate(todayIso(), initialMonths))
         setCoverImage({ file: null, preview: null })
         setLargeImage({ file: null, preview: null })
       }
@@ -159,10 +174,14 @@ export function AdvertisementFormDialog({
 
   const handleStartDateChange = (val: string) => {
     setStartDate(val)
+    if (val) {
+      setEndDate(calculateEndDate(val, subscriptionMonths))
+    }
   }
 
   const handleDurationChange = (months: number) => {
     setSubscriptionMonths(months)
+    setEndDate(calculateEndDate(startDate, months))
   }
 
   const snapshotPlan: SubscriptionDurationOption | null =
@@ -247,8 +266,6 @@ export function AdvertisementFormDialog({
       const cleanPhone = mobileNumber.replace(/\D/g, "")
 
       if (editing) {
-        // Subscription price/duration are a purchase snapshot and must never be
-        // rewritten by an edit; the API rejects tampering as well.
         await updateAdvertisement(editing.id, {
           title: title.trim(),
           group_id: groupId || null,
@@ -256,6 +273,8 @@ export function AdvertisementFormDialog({
           mobile_number: cleanPhone,
           start_date: startDate,
           end_date: endDate,
+          subscription_months: selectedPlan?.months ?? subscriptionMonths,
+          amount: selectedPlan ? Number(selectedPlan.price) : undefined,
         })
 
         if (coverImage.file) {
@@ -300,7 +319,7 @@ export function AdvertisementFormDialog({
           <DialogTitle>{editing ? "Edit Advertisement" : "Subscribe Advertisement"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Update campaign details, dates, or banner media assets. The purchased subscription plan and amount stay locked."
+              ? "Update campaign details, subscription plan, dates, or banner media assets."
               : "Choose a subscription plan, then fill in the campaign details below."}
           </DialogDescription>
         </DialogHeader>
@@ -311,17 +330,12 @@ export function AdvertisementFormDialog({
           <FormField
             label="Subscription Plan"
             required
-            hint={
-              editing
-                ? "Purchased duration is locked."
-                : "Expiry is calculated and stored separately by the server."
-            }
+            hint="Choose a plan. End date will be automatically calculated."
           >
             <SubscriptionPlanSelector
               plans={planOptions}
               value={subscriptionMonths}
               onChange={handleDurationChange}
-              disabled={Boolean(editing)}
             />
           </FormField>
         </div>
@@ -383,9 +397,14 @@ export function AdvertisementFormDialog({
           <FormField
             label="End Date"
             required
-            hint={editing ? "Advertisement end date is preserved." : "Choose the advertisement end date."}
+            hint={`Auto-calculated according to start date and subscription duration (${subscriptionMonths} month${subscriptionMonths > 1 ? "s" : ""}). Manual editing is disabled.`}
           >
-            <DateInput value={endDate} onChange={setEndDate} />
+            <DateInput
+              value={endDate}
+              onChange={() => {}}
+              disabled
+              className="bg-muted/40 cursor-not-allowed opacity-85"
+            />
           </FormField>
 
           {/* Contact Person Name */}

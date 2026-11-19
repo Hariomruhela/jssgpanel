@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   Building2,
   CalendarDays,
+  HeartHandshake,
   // FileBarChart,
   Image as ImageIcon,
   IndianRupee,
@@ -39,6 +40,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Groups", path: "/admin/groups", icon: Building2 },
       // { title: "Tirth Locations", path: "/admin/locations", icon: MapPin },
       { title: "Payments", path: "/admin/payments", icon: IndianRupee },
+      { title: "Contributions", path: "/admin/contributions", icon: HeartHandshake },
     ],
   },
   // {

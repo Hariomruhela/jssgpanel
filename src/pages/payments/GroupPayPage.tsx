@@ -9,9 +9,11 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Copy,
   CreditCard,
   History,
   IndianRupee,
+  ReceiptText,
   RefreshCw,
   ShieldCheck,
   TrendingUp,
@@ -22,7 +24,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/StatusBadge"
 import { useData } from "@/lib/useData"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format"
 import { getErrorMessage } from "@/lib/apiClient"
 import { loadRazorpayScript } from "@/lib/razorpay"
 import {
@@ -44,6 +46,16 @@ export default function GroupPayPage() {
   )
 
   const group: GroupObligationRecord | undefined = detailData.data?.obligation
+  const transactions = detailData.data?.transactions ?? []
+
+  const memberCount =
+    typeof group?.member_count === "number" && !Number.isNaN(group.member_count)
+      ? group.member_count
+      : typeof (group as any)?.member_count_snapshot === "number"
+      ? (group as any).member_count_snapshot
+      : group?.expected_amount && group?.rate_per_member
+      ? Math.round(group.expected_amount / group.rate_per_member)
+      : 0
 
   const [amountToPay, setAmountToPay] = useState<number>(0)
   const [submitting, setSubmitting] = useState(false)
@@ -203,7 +215,7 @@ export default function GroupPayPage() {
 
   if (detailData.loading && !group) {
     return (
-      <div className="mx-auto max-w-4xl space-y-6 py-6">
+      <div className="w-full space-y-6 py-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/admin/payments")}>
             <ArrowLeft className="size-4 mr-1" /> Back
@@ -241,7 +253,7 @@ export default function GroupPayPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* Top Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
@@ -318,7 +330,7 @@ export default function GroupPayPage() {
               <CardTitle className="text-lg font-bold">{group.group_name}</CardTitle>
               <CardDescription className="flex items-center gap-2 pt-1 text-xs">
                 <Users className="size-3.5 text-muted-foreground" />
-                <span>{group.member_count} eligible members</span>
+                <span>{memberCount} eligible members</span>
                 <span>&bull;</span>
                 <span>₹{group.rate_per_member} / member</span>
                 <span>&bull;</span>
@@ -338,7 +350,7 @@ export default function GroupPayPage() {
         </CardHeader>
 
         {/* Current Financial Status Bar */}
-        <CardContent className="pt-4">
+        <CardContent className="space-y-3 pt-4">
           <div className="grid grid-cols-3 gap-3 rounded-lg border bg-card p-3 text-center sm:gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Total Expected</p>
@@ -356,6 +368,14 @@ export default function GroupPayPage() {
                 {formatCurrency(group.pending_amount)}
               </p>
             </div>
+          </div>
+
+          {/* Member Calculation Formula */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/30 border px-3 py-2 text-xs">
+            <span className="text-muted-foreground font-medium">Annual Contribution Formula:</span>
+            <span className="font-mono text-foreground">
+              <strong>{memberCount}</strong> members × <strong>₹{group.rate_per_member}</strong>/member = <strong className="text-primary font-bold">{formatCurrency(group.expected_amount)}</strong>
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -644,10 +664,12 @@ export default function GroupPayPage() {
                     variant="ghost"
                     size="sm"
                     className="w-full text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => navigate(`/admin/payments`)}
+                    onClick={() => {
+                      document.getElementById("ledger-history-section")?.scrollIntoView({ behavior: "smooth" })
+                    }}
                   >
                     <History className="size-3.5 mr-1.5" />
-                    View All Transaction History
+                    View Ledger & Transactions ({transactions.length})
                   </Button>
                 </div>
               </CardContent>
@@ -655,6 +677,197 @@ export default function GroupPayPage() {
           </div>
         </div>
       )}
+
+      {/* Group Payment Ledger & History Section (Pop-up Data Shown Directly on Page) */}
+      <Card id="ledger-history-section" className="overflow-hidden border-border/80 shadow-xs">
+        <CardHeader className="bg-muted/30 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <History className="size-4 text-primary" />
+                Group Payment Ledger & History
+              </CardTitle>
+              <CardDescription className="text-xs pt-1">
+                Verified payment ledger, contribution breakdown, and transaction history for {group.group_name}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-primary/10 text-primary font-medium text-xs px-2.5 py-1">
+                {transactions.length} {transactions.length === 1 ? "Transaction" : "Transactions"}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => detailData.reload()}
+                disabled={detailData.loading}
+                className="h-8 gap-1.5 text-xs"
+              >
+                <RefreshCw className={`size-3.5 ${detailData.loading ? "animate-spin" : ""}`} />
+                Refresh Ledger
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-5 pt-4">
+          {/* Obligation Snapshot Grid */}
+          <div className="rounded-xl border p-4 bg-muted/20 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 text-xs">
+              <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+                Billing Period: <span className="text-foreground">{group.billing_period}</span>
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground flex items-center gap-1 font-medium">
+                  <CalendarClock className="size-3 text-primary" />
+                  Due Date: {formatDate(dueDateStr)}
+                </span>
+                <StatusBadge status={group.status} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Eligible Members</p>
+                <p className="font-semibold text-foreground flex items-center gap-1">
+                  <Users className="size-3.5 text-primary" />
+                  {memberCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Rate / Member</p>
+                <p className="font-semibold text-foreground">₹{group.rate_per_member}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Expected</p>
+                <p className="font-semibold text-foreground">{formatCurrency(group.expected_amount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Collected</p>
+                <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(group.collected_amount)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between border-t pt-2.5 text-xs gap-2">
+              <div className="text-muted-foreground font-mono">
+                Calculation: {memberCount} members × ₹{group.rate_per_member} = <span className="text-foreground font-semibold">{formatCurrency(group.expected_amount)}</span>
+              </div>
+              <div className="flex items-center gap-1 font-medium">
+                <span className="text-muted-foreground">Outstanding Balance:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">
+                  {formatCurrency(group.pending_amount)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Payment Link (if any) */}
+          {group.active_payment_link_url && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+              <div className="min-w-0 pr-2 space-y-0.5">
+                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                  <ReceiptText className="size-3.5 text-primary" />
+                  Active Payment Link
+                </p>
+                <p className="truncate font-mono text-muted-foreground max-w-lg">
+                  {group.active_payment_link_url}
+                </p>
+              </div>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(group.active_payment_link_url!)
+                  toast.success("Active link copied!")
+                }}
+                className="gap-1 shrink-0"
+              >
+                <Copy className="size-3" />
+                Copy Link
+              </Button>
+            </div>
+          )}
+
+          {/* Transactions History */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <ReceiptText className="size-4 text-primary" />
+                Payment Transactions ({transactions.length})
+              </h4>
+              {detailData.loading && <span className="text-xs text-muted-foreground">Refreshing…</span>}
+            </div>
+
+            {transactions.length === 0 ? (
+              <div className="rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground space-y-1">
+                <ReceiptText className="size-8 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="font-medium">No verified payments recorded yet for this group.</p>
+                <p className="text-xs">When payments are completed via Razorpay checkout or payment links, they will be listed here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {transactions.map((tx) => {
+                  const txRef = tx.razorpay_payment_id ?? tx.provider_transaction_id ?? tx.id
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border bg-card p-3.5 text-sm hover:border-primary/40 transition-colors shadow-2xs"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-foreground">
+                            {tx.transaction_type.replaceAll("_", " ")}
+                          </p>
+                          {tx.payment_method && (
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase font-mono font-semibold text-muted-foreground">
+                              {tx.payment_method}
+                            </span>
+                          )}
+                          <StatusBadge status={tx.status} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-mono">
+                          <span>Txn: {txRef}</span>
+                          {tx.razorpay_order_id && (
+                            <>
+                              <span>•</span>
+                              <span>Order: {tx.razorpay_order_id}</span>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(txRef)
+                              toast.success("Transaction ID copied!")
+                            }}
+                            className="text-primary hover:underline font-sans text-[11px] inline-flex items-center gap-0.5 ml-1"
+                            title="Copy transaction reference"
+                          >
+                            <Copy className="size-3" />
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {tx.paid_at ? formatDateTime(tx.paid_at) : formatDateTime(tx.created_at)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0">
+                        {tx.amount !== null && (
+                          <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(tx.amount)}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">Verified Gateway Capture</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

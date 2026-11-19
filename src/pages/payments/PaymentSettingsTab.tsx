@@ -6,14 +6,11 @@ import {
   RefreshCw,
   Save,
   Settings,
-  ShieldCheck,
-  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Checkbox } from "@/components/ui/checkbox"
 import { FormField } from "@/components/FormField"
 import { DateInput } from "@/components/DateInput"
 import { useData } from "@/lib/useData"
@@ -31,20 +28,20 @@ const DEFAULT_SETTINGS: PaymentSettings = {
   payment_gateway: "Razorpay",
   razorpay_key_id: "rzp_test_TzeUn0Iazq0yuq",
   allowed_payment_methods: ["UPI", "Net Banking", "Debit/Credit Card"],
-  apply_to_existing_obligations: false,
+  apply_to_existing_obligations: true,
 }
 
 export function PaymentSettingsTab({ onSettingsUpdated }: { onSettingsUpdated?: () => void }) {
   const settingsData = useData(useCallback(() => getPaymentSettings(), []))
   const [form, setForm] = useState<PaymentSettings>(DEFAULT_SETTINGS)
   const [saving, setSaving] = useState(false)
-  const [applyToExisting, setApplyToExisting] = useState(false)
 
   useEffect(() => {
     if (settingsData.data) {
       setForm({
         ...DEFAULT_SETTINGS,
         ...settingsData.data,
+        apply_to_existing_obligations: settingsData.data.apply_to_existing_obligations ?? true,
       })
     }
   }, [settingsData.data])
@@ -55,13 +52,9 @@ export function PaymentSettingsTab({ onSettingsUpdated }: { onSettingsUpdated?: 
     try {
       await updatePaymentSettings({
         ...form,
-        apply_to_existing_obligations: applyToExisting,
+        apply_to_existing_obligations: form.apply_to_existing_obligations ?? true,
       })
-      toast.success(
-        applyToExisting
-          ? "Payment settings saved and applied to all group obligations!"
-          : "Payment settings saved successfully!"
-      )
+      toast.success("Payment settings saved & group obligations updated successfully!")
       settingsData.reload()
       onSettingsUpdated?.()
     } catch (error) {
@@ -69,16 +62,6 @@ export function PaymentSettingsTab({ onSettingsUpdated }: { onSettingsUpdated?: 
     } finally {
       setSaving(false)
     }
-  }
-
-  const toggleMethod = (method: string) => {
-    setForm((prev) => {
-      const exists = prev.allowed_payment_methods.includes(method)
-      const updated = exists
-        ? prev.allowed_payment_methods.filter((m) => m !== method)
-        : [...prev.allowed_payment_methods, method]
-      return { ...prev, allowed_payment_methods: updated }
-    })
   }
 
   if (settingsData.loading && !settingsData.data) {
@@ -230,81 +213,31 @@ export function PaymentSettingsTab({ onSettingsUpdated }: { onSettingsUpdated?: 
                 />
               </div>
 
-              {/* Payment Methods Checkboxes */}
-              <div className="space-y-2 pt-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Allowed Payment Methods:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {["UPI", "Net Banking", "Debit/Credit Card"].map((method) => {
-                    const isChecked = form.allowed_payment_methods.includes(method)
-                    return (
-                      <div
-                        key={method}
-                        onClick={() => toggleMethod(method)}
-                        className={`flex items-center space-x-2 rounded-lg border p-3 cursor-pointer transition-colors ${
-                          isChecked
-                            ? "border-primary/50 bg-primary/5"
-                            : "border-border bg-card hover:bg-muted/30"
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isChecked}
-                          onCheckedChange={() => toggleMethod(method)}
-                        />
-                        <span className="text-xs font-medium">{method}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Gateway Status */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
-                <ShieldCheck className="size-4 text-primary" />
-                Payment Gateway Configuration (Razorpay)
-              </h3>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  label="Payment Gateway Provider"
-                  hint="Configured backend payment processor"
-                >
-                  <Input value={form.payment_gateway} disabled className="bg-muted/50" />
-                </FormField>
-
-                <FormField
-                  label="Razorpay Key ID"
-                  hint="Merchant Key used for Super Admin and payment link checkouts"
-                >
-                  <Input value={form.razorpay_key_id} disabled className="bg-muted/50 font-mono text-xs" />
-                </FormField>
-              </div>
-            </div>
-
-            {/* 4. Apply to Existing Obligations Option */}
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="apply_existing"
-                  checked={applyToExisting}
-                  onCheckedChange={(checked) => setApplyToExisting(Boolean(checked))}
-                  className="mt-1"
-                />
-                <div className="space-y-0.5">
-                  <label
-                    htmlFor="apply_existing"
-                    className="text-sm font-semibold cursor-pointer text-foreground flex items-center gap-1.5"
-                  >
-                    <Sparkles className="size-4 text-primary" />
-                    Apply and Recalculate for All Groups in FY {form.billing_period}
-                  </label>
+              {/* 3. Recalculate Group Obligations for Active Period */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl border p-4 bg-muted/20">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">Update Existing Group Obligations</span>
+                    {form.apply_to_existing_obligations ? (
+                      <span className="text-[11px] rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 font-medium dark:bg-emerald-950 dark:text-emerald-300">
+                        Apply to {form.billing_period || "2026-2027"}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+                        Off (New Groups Only)
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Check this option to immediately sync the new rate (₹{form.rate_per_member}/member) and due date ({form.due_date}) across all groups for fiscal year {form.billing_period}. Expected and pending amounts will be atomically recalculated.
+                    When enabled, saving immediately recalculates the expected amount and pending balances for all 112 groups in fiscal period {form.billing_period || "2026-2027"}.
                   </p>
                 </div>
+                <Switch
+                  checked={Boolean(form.apply_to_existing_obligations)}
+                  onCheckedChange={(checked) =>
+                    setForm((s) => ({ ...s, apply_to_existing_obligations: checked }))
+                  }
+                />
               </div>
             </div>
           </CardContent>

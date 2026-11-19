@@ -257,7 +257,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       method,
       headers,
       signal,
-      body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
+      body: formData ?? (body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body)),
     })
   } catch {
     throw new ApiError(translate("Could not reach the JSSG API. Check your connection and try again."), 0)

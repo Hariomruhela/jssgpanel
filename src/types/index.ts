@@ -786,6 +786,8 @@ export interface Advertisement {
   is_active?: boolean
   payment_status?: string | null
   payment_id?: string | null
+  transaction_id?: string | null
+  payment_method?: string | null
   group_id?: string | null
   group_name?: string | null
   advertiser_id?: string | null
@@ -847,6 +849,45 @@ export interface AdvertisementUpdateInput {
   cover_image_url?: string
   large_image_url?: string
 }
+
+export interface AdvertisementRenewInput {
+  subscription_months: number
+  start_date?: string
+  end_date?: string
+  payment_method?: string
+  payment_status?: string
+  transaction_id?: string
+}
+
+export interface AdvertisementPaymentOrderResult {
+  order_id: string
+  razorpay_order_id: string
+  razorpay_key_id: string
+  amount: number
+  currency: string
+  advertisement_id: string
+  title: string
+}
+
+export interface AdvertisementPaymentVerifyInput {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
+export interface AdvertisementManualPaymentInput {
+  payment_method: "CASH" | "CHEQUE" | "BANK_TRANSFER" | "WAIVED"
+  transaction_id?: string
+  notes?: string
+}
+
+export interface AdvertisementPaymentLinkResult {
+  payment_link_id: string
+  short_url: string
+  amount: number
+  currency: string
+}
+
 
 export interface SubscriptionPriceUpdate {
   months: number
@@ -980,6 +1021,7 @@ export interface GroupObligationRecord {
   group_name: string
   billing_period: string
   member_count: number
+  member_count_snapshot?: number | null
   rate_per_member: number
   expected_amount: number
   collected_amount: number
@@ -1096,4 +1138,51 @@ export interface RegistrationTrendPoint {
   applied: number
   approved: number
   rejected: number
+}
+
+export interface ContributionRecord {
+  id: string
+  order_id: string
+  transaction_id: string | null
+  receipt_no?: string | null
+  amount: number
+  currency: string
+  status: string
+  group_id: string | null
+  group_name: string | null
+  member_id: string | null
+  member_name?: string | null
+  donor_name?: string | null
+  donor_phone?: string | null
+  payment_method?: string | null
+  purpose: string | null
+  notes: string | null
+  paid_at: string | null
+  created_at: string
+}
+
+export interface ContributionListParams {
+  groupId?: string
+  search?: string
+  page?: number
+  pageSize?: number
+  fetchAll?: boolean
+}
+
+export interface ContributionListResult {
+  items: ContributionRecord[]
+  pagination: ApiPagination | null
+}
+
+export interface ContributionManualInput {
+  amount: number
+  donor_name: string
+  donor_phone?: string
+  group_id?: string
+  member_id?: string
+  payment_method: "CASH" | "CHEQUE" | "UPI" | "BANK_TRANSFER"
+  transaction_id?: string
+  purpose?: string
+  notes?: string
+  paid_at?: string
 }

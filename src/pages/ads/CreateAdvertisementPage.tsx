@@ -25,6 +25,19 @@ function todayIso(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 }
 
+function calculateEndDate(startDateStr: string, months: number): string {
+  if (!startDateStr || !months) return startDateStr || todayIso()
+  const parts = startDateStr.split("-").map(Number)
+  if (parts.length !== 3 || parts.some(isNaN)) return startDateStr
+  const [year, month, day] = parts
+  const totalMonths = month - 1 + Number(months)
+  const targetYear = year + Math.floor(totalMonths / 12)
+  const targetMonth = totalMonths % 12
+  const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+  const targetDay = Math.min(day, daysInTargetMonth)
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`
+}
+
 interface ImageUploadItem {
   file: File | null
   preview: string | null
@@ -48,8 +61,8 @@ export default function CreateAdvertisementPage() {
     user?.phone_number ? user.phone_number.replace(/\D/g, "").slice(-10) : ""
   )
   const [startDate, setStartDate] = useState(todayIso())
-  const [endDate, setEndDate] = useState(todayIso())
-  const [subscriptionMonths, setSubscriptionMonths] = useState(2)
+  const [subscriptionMonths, setSubscriptionMonths] = useState(1)
+  const [endDate, setEndDate] = useState(calculateEndDate(todayIso(), 1))
 
   // Options
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([])
@@ -85,16 +98,25 @@ export default function CreateAdvertisementPage() {
   useEffect(() => {
     loadGroups()
     getSubscriptionDurations()
-      .then(setDurations)
+      .then((plans) => {
+        setDurations(plans)
+        if (plans.length > 0) {
+          const def = plans.find((p) => p.is_default) || plans[0]
+          setSubscriptionMonths(def.months)
+          setEndDate(calculateEndDate(todayIso(), def.months))
+        }
+      })
       .catch(() => toast.error("Could not load subscription plans. Please try again."))
   }, [loadGroups])
 
   const handleStartDateChange = (val: string) => {
     setStartDate(val)
+    setEndDate(calculateEndDate(val, subscriptionMonths))
   }
 
   const handleDurationChange = (months: number) => {
     setSubscriptionMonths(months)
+    setEndDate(calculateEndDate(startDate, months))
   }
 
   const selectedPlan =
@@ -275,9 +297,14 @@ export default function CreateAdvertisementPage() {
               <FormField
                 label="End Date"
                 required
-                hint="Choose the advertisement end date."
+                hint={`Auto-calculated according to start date and subscription duration (${subscriptionMonths} month${subscriptionMonths > 1 ? "s" : ""}). Manual editing is disabled.`}
               >
-                <DateInput value={endDate} onChange={setEndDate} />
+                <DateInput
+                  value={endDate}
+                  onChange={() => {}}
+                  disabled
+                  className="bg-muted/40 cursor-not-allowed opacity-85"
+                />
               </FormField>
 
               {/* Person Name */}

@@ -5,6 +5,11 @@ import type {
   AdvertisementCreateInput,
   AdvertisementListParams,
   AdvertisementListResponse,
+  AdvertisementManualPaymentInput,
+  AdvertisementPaymentLinkResult,
+  AdvertisementPaymentOrderResult,
+  AdvertisementPaymentVerifyInput,
+  AdvertisementRenewInput,
   AdvertisementUpdateInput,
   ApiEnvelope,
   SubscriptionDurationOption,
@@ -52,9 +57,7 @@ adsApi.interceptors.response.use(
 )
 
 /**
- * Fetch active subscription plans. Prices are always read from the API — the
- * frontend never keeps its own price list, so a Super Admin update cannot be
- * bypassed by a stale bundle.
+ * Fetch active subscription plans. Prices are always read from the API.
  * GET /api/v1/advertisements/subscription-durations
  */
 export async function getSubscriptionDurations(): Promise<SubscriptionDurationOption[]> {
@@ -259,6 +262,64 @@ export async function approveAdvertisement(
 }
 
 /**
+ * Renew an advertisement subscription:
+ * POST /api/v1/advertisements/{id}/renew
+ */
+export async function renewAdvertisement(
+  id: string,
+  input: AdvertisementRenewInput
+): Promise<Advertisement> {
+  const res = await adsApi.post<ApiEnvelope<Advertisement>>(`/${id}/renew`, input)
+  return res.data?.data ?? (res.data as unknown as Advertisement)
+}
+
+/**
+ * Create a Razorpay checkout order for an advertisement:
+ * POST /api/v1/advertisements/{id}/payment/order
+ */
+export async function createAdPaymentOrder(
+  id: string
+): Promise<AdvertisementPaymentOrderResult> {
+  const res = await adsApi.post<ApiEnvelope<AdvertisementPaymentOrderResult>>(`/${id}/payment/order`)
+  return res.data?.data!
+}
+
+/**
+ * Verify Razorpay payment signature for an advertisement:
+ * POST /api/v1/advertisements/{id}/payment/verify
+ */
+export async function verifyAdPayment(
+  id: string,
+  input: AdvertisementPaymentVerifyInput
+): Promise<Advertisement> {
+  const res = await adsApi.post<ApiEnvelope<Advertisement>>(`/${id}/payment/verify`, input)
+  return res.data?.data ?? (res.data as unknown as Advertisement)
+}
+
+/**
+ * Generate a mobile-friendly Razorpay payment link for an advertisement:
+ * POST /api/v1/advertisements/{id}/payment/link
+ */
+export async function createAdPaymentLink(
+  id: string
+): Promise<AdvertisementPaymentLinkResult> {
+  const res = await adsApi.post<ApiEnvelope<AdvertisementPaymentLinkResult>>(`/${id}/payment/link`)
+  return res.data?.data!
+}
+
+/**
+ * Record manual/offline payment (Cash/Cheque/Bank Transfer) or Waive fee:
+ * POST /api/v1/advertisements/{id}/payment/manual
+ */
+export async function recordAdManualPayment(
+  id: string,
+  input: AdvertisementManualPaymentInput
+): Promise<Advertisement> {
+  const res = await adsApi.post<ApiEnvelope<Advertisement>>(`/${id}/payment/manual`, input)
+  return res.data?.data ?? (res.data as unknown as Advertisement)
+}
+
+/**
  * Delete advertisement:
  * DELETE /api/v1/advertisements/{id}
  */
@@ -321,8 +382,6 @@ export async function getAdvertisementCounts(): Promise<AdvertisementCounts> {
 
 /**
  * Robust helper to submit new advertisement with files.
- * Uses POST /form first; if that endpoint is not available, falls back to
- * POST /advertisements + dedicated upload endpoints.
  */
 export async function submitAdvertisementWithFiles(params: {
   title: string
@@ -361,7 +420,6 @@ export async function submitAdvertisementWithFiles(params: {
 
     return await createAdvertisementForm(form)
   } catch (err) {
-    // If form endpoint returned 404/not supported, fallback to JSON create + dedicated uploads
     const isNotFound = (err as unknown as { status?: number }).status === 404
     if (!isNotFound) {
       throw err
