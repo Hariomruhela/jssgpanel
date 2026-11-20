@@ -3,6 +3,7 @@ import { X, Heart, Plus, Loader2 } from "lucide-react"
 import type { ContributionManualInput, ContributionRecord } from "@/types"
 import { recordManualContribution } from "@/services/api/contributions"
 import { listGroups } from "@/services/api/groups"
+import { triggerPaymentNotification } from "@/lib/notifications"
 
 interface AddContributionModalProps {
   onClose: () => void
@@ -81,6 +82,19 @@ export function AddContributionModal({ onClose, onSuccess }: AddContributionModa
       }
 
       const res = await recordManualContribution(payload)
+
+      triggerPaymentNotification({
+        category: "contribution",
+        title: "Contribution Received",
+        message: `Contribution of ₹${numAmount.toLocaleString("en-IN")} received from ${donorName.trim()} (${finalPurpose})`,
+        amount: numAmount,
+        donorName: donorName.trim(),
+        groupName: groupOptions.find((g) => g.id === groupId)?.name || res.group_name,
+        receiptNo: res.receipt_no,
+        transactionId: res.transaction_id,
+        link: "/admin/contributions",
+      })
+
       onSuccess(res)
       onClose()
     } catch (err: any) {

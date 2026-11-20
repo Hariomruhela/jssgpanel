@@ -4,7 +4,7 @@ export function DashboardBanner() {
   const { t } = useLanguage()
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] shadow-xs bg-[#FAF6EE] min-h-[130px] md:min-h-[145px]">
+    <section className="relative overflow-hidden rounded-2xl border border-[#E8DFD1] shadow-xs bg-[#FAF6EE] min-h-[160px] md:min-h-[175px]">
       {/* Background Graphic featuring Marble Temple Arches and Tirthankara Statue */}
       <div
         className="absolute inset-0 size-full bg-cover bg-right md:bg-center bg-no-repeat"

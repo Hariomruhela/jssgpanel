@@ -953,7 +953,8 @@ function TransactionsTab() {
     useCallback(
       () => listPayments({ memberId: memberId || undefined, page, pageSize: TRANSACTIONS_PAGE_SIZE }),
       [memberId, page]
-    )
+    ),
+    [memberId, page]
   )
 
   const rows = payments.data?.payments ?? []

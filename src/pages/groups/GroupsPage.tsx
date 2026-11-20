@@ -135,7 +135,8 @@ function GroupsPage() {
       const state = form.state?.trim()
       if (!state) return { state: "", items: [] as GeoCity[] }
       return { state, items: await getGeoStateCities(state) }
-    }, [form.state])
+    }, [form.state]),
+    form.state
   )
 
   const stateOptions = useMemo(() => {

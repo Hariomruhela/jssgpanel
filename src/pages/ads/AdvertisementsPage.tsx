@@ -152,7 +152,7 @@ export default function AdvertisementsPage() {
         }),
       [page, selectedGroup, selectedStatus]
     ),
-    version
+    [page, selectedGroup, selectedStatus, version]
   )
 
   // Fetch summary counts

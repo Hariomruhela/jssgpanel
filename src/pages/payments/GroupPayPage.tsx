@@ -27,6 +27,7 @@ import { useData } from "@/lib/useData"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format"
 import { getErrorMessage } from "@/lib/apiClient"
 import { loadRazorpayScript } from "@/lib/razorpay"
+import { triggerPaymentNotification } from "@/lib/notifications"
 import {
   createGroupCheckoutOrder,
   getGroupObligationDetail,
@@ -171,6 +172,15 @@ export default function GroupPayPage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
+            })
+            triggerPaymentNotification({
+              category: "group_payment",
+              title: "Group Payment Received",
+              message: `Payment of ${formatCurrency(order.amount)} received from ${order.group_name || group?.group_name}`,
+              amount: order.amount,
+              groupName: order.group_name || group?.group_name,
+              transactionId: response.razorpay_payment_id,
+              link: `/admin/payments/pay/${groupId}`,
             })
             toast.success(`Payment of ${formatCurrency(order.amount)} verified successfully!`, {
               id: "checkout-verify",

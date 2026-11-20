@@ -94,7 +94,7 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
   // The whole directory is listed, not only search hits: typing narrows it.
   const directory = useData(
     useCallback(() => getMembers({ query, pageSize: 100 }), [query]),
-    version
+    [query, version]
   )
 
   useEffect(() => {

@@ -44,7 +44,7 @@ export default function JainTirthsPage() {
       () => listJainTirths({ page, pageSize: PAGE_SIZE, search: query, status }),
       [page, query, status]
     ),
-    version
+    [page, query, status, version]
   )
   const counts = useData(useCallback(() => getJainTirthCounts(), []), version)
 

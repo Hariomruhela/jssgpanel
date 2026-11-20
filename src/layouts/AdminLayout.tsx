@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Bell, ChevronDown, LogOut, Menu, Search, Settings } from "lucide-react"
+import { ChevronDown, LogOut, Menu, Search, Settings } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,7 @@ import { isGroupAdminRole } from "@/services/api/session"
 import { useLanguage } from "@/lib/language"
 import { useAuth } from "@/lib/auth"
 import { LotusIcon } from "@/components/LotusIcon"
+import { NotificationPopover } from "@/components/NotificationPopover"
 
 function Logo({ compact = false }: { compact?: boolean }) {
   const { t } = useLanguage()
@@ -201,17 +202,7 @@ export function AdminLayout() {
 
           {/* Right section: Notification Bell with Badge + Admin Avatar Menu */}
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-[#3D2B1F] hover:bg-[#FAF6EE] rounded-lg"
-              aria-label={t("Notifications")}
-            >
-              <Bell className="size-4.5" />
-              <span className="absolute top-2 right-2 flex size-3.5 items-center justify-center rounded-full bg-[#E53935] text-[9px] font-bold text-white">
-                3
-              </span>
-            </Button>
+            <NotificationPopover />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

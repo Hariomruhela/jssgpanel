@@ -1,5 +1,6 @@
 import { apiRequest, getStoredToken, setStoredToken, unwrapItem } from "@/lib/apiClient"
 import { translate } from "@/lib/language"
+import { memoryCache } from "@/lib/cache"
 import type { AuthLoginResponse, UserAccount } from "@/types"
 
 const USER_STORAGE_KEY = "jssg-api-user"
@@ -99,6 +100,7 @@ function setStoredUser(user: UserAccount | null): void {
 export function signOut(): void {
   setStoredToken(null)
   setStoredUser(null)
+  memoryCache.clear()
 }
 
 /**

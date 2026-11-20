@@ -130,17 +130,17 @@ export default function PostHoldersPage() {
       () => getTrustees({ page, pageSize: PAGE_SIZE, query, groupId }),
       [page, query, groupId]
     ),
-    version
+    [page, query, groupId, version]
   )
   // The seats carry the term of every post holder; a trustee without a seat is
   // still a post holder (their designation is enough).
   const seats = useData(
     useCallback(() => getAllBoardSeats(groupId || undefined), [groupId]),
-    version
+    [groupId, version]
   )
   const counts = useData(
     useCallback(() => getTrusteeCounts({ query, groupId }), [query, groupId]),
-    version
+    [query, groupId, version]
   )
   const groups = useData(useCallback(() => getGroups(), []), version)
 

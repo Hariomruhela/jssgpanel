@@ -55,7 +55,7 @@ export default function MembersPage() {
       () => getMembers({ page, pageSize: PAGE_SIZE, query, groupName }),
       [page, query, groupName]
     ),
-    version
+    [page, query, groupName, version]
   )
   const counts = useData(useCallback(() => getMembershipCounts(), []), version)
   const options = useData(

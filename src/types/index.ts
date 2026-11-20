@@ -752,6 +752,23 @@ export interface Notification {
   opened: number
 }
 
+export type AppNotificationCategory = "contribution" | "group_payment" | "ad_payment" | "general"
+
+export interface AppNotificationItem {
+  id: string
+  category: AppNotificationCategory
+  title: string
+  message: string
+  amount?: number | null
+  donorName?: string | null
+  groupName?: string | null
+  receiptNo?: string | null
+  transactionId?: string | null
+  timestamp: string
+  read: boolean
+  link?: string | null
+}
+
 export interface SubscriptionDurationOption {
   months: number
   label: string

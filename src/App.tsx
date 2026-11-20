@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AdminLayout } from "@/layouts/AdminLayout"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AuthProvider, RequireAdmin } from "@/lib/auth"
+import { NotificationProvider } from "@/lib/notifications"
 
 const AuthLayout = lazy(() => import("@/pages/auth/AuthLayout"))
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"))
@@ -83,7 +84,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
+        <NotificationProvider>
+          <Routes>
           <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
 
           <Route element={<AuthLayout />}>
@@ -164,6 +166,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   )

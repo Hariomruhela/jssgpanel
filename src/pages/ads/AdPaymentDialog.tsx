@@ -31,6 +31,7 @@ import {
 } from "@/services/api/ads"
 import { formatCurrency } from "@/lib/format"
 import { loadRazorpayScript } from "@/lib/razorpay"
+import { triggerPaymentNotification } from "@/lib/notifications"
 
 interface AdPaymentDialogProps {
   open: boolean
@@ -89,6 +90,14 @@ export function AdPaymentDialog({ open, ad, onOpenChange, onPaid }: AdPaymentDia
               })
               toast.dismiss()
               toast.success("Payment verified and advertisement activated!")
+              triggerPaymentNotification({
+                category: "ad_payment",
+                title: "Ad Payment Received",
+                message: `Payment of ${formatCurrency(amountVal)} received for advertisement: "${ad.title}"`,
+                amount: amountVal,
+                transactionId: response.razorpay_payment_id,
+                link: "/admin/advertisements",
+              })
               onPaid(verified)
               onOpenChange(false)
             } catch (err: any) {
@@ -116,6 +125,14 @@ export function AdPaymentDialog({ open, ad, onOpenChange, onPaid }: AdPaymentDia
           payment_method: offlineMethod,
           transaction_id: offlineTxnId.trim() || undefined,
           notes: "Offline advertisement payment",
+        })
+        triggerPaymentNotification({
+          category: "ad_payment",
+          title: "Ad Payment Received",
+          message: `Payment of ${formatCurrency(amountVal)} received for advertisement: "${ad.title}" (${offlineMethod})`,
+          amount: amountVal,
+          transactionId: offlineTxnId.trim() || undefined,
+          link: "/admin/advertisements",
         })
         toast.success("Offline payment recorded successfully!")
         onPaid(updated)

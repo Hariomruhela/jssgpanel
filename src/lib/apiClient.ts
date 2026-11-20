@@ -1,5 +1,6 @@
 import type { ApiEnvelope } from "@/types"
 import { translate } from "@/lib/language"
+import { DEFAULT_STALE_TIME, memoryCache } from "@/lib/cache"
 
 const DEFAULT_BASE_URL = "https://jssgapi-ten.vercel.app/api/v1"
 const TOKEN_STORAGE_KEY = "jssg-api-token"
@@ -60,6 +61,8 @@ export interface RequestOptions {
   body?: unknown
   auth?: boolean
   signal?: AbortSignal
+  skipCache?: boolean
+  staleTime?: number
 }
 
 export function normalizeErrorMessage(msg: string): string {
@@ -238,68 +241,111 @@ export function getErrorMessage(error: unknown, fallback?: string): string {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, auth = false, signal } = options
-  const token = getStoredToken()
-  const headers: Record<string, string> = { Accept: "application/json" }
-  const formData = body instanceof FormData ? body : null
-  // A multipart body carries its own boundary, so setting the JSON content type
-  // would make the API reject the upload.
-  if (body !== undefined && !formData) headers["Content-Type"] = "application/json"
-  if (token) headers.Authorization = `Bearer ${token}`
+  const {
+    method = "GET",
+    body,
+    auth = false,
+    signal,
+    skipCache = false,
+    staleTime = DEFAULT_STALE_TIME,
+  } = options
 
-  if (auth && !token) {
-    throw new ApiError(translate("You are signed out. Sign in to the JSSG API to perform this action."), 401)
-  }
+  const isGet = method === "GET"
+  const cacheKey = `api::${path}`
 
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers,
-      signal,
-      body: formData ?? (body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body)),
-    })
-  } catch {
-    throw new ApiError(translate("Could not reach the JSSG API. Check your connection and try again."), 0)
-  }
-
-  const raw = await response.text()
-  let payload: unknown = null
-  if (raw) {
-    try {
-      payload = JSON.parse(raw)
-    } catch {
-      payload = raw
+  // For GET requests, return fresh cached result if available
+  if (isGet && !skipCache) {
+    const cached = memoryCache.getFresh<T>(cacheKey, staleTime)
+    if (cached !== null) {
+      return cached
+    }
+    const inFlight = memoryCache.getInFlight<T>(cacheKey)
+    if (inFlight) {
+      return inFlight
     }
   }
 
-  if (!response.ok) {
-    // Only an authenticated request whose token is still the current one can expire the
-    // session. Concurrent 401s share that token, so clearing it once makes the rest no-ops.
-    if (response.status === 401 && token && getStoredToken() === token) {
-      setStoredToken(null)
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
+  const runRequest = async (): Promise<T> => {
+    const token = getStoredToken()
+    const headers: Record<string, string> = { Accept: "application/json" }
+    const formData = body instanceof FormData ? body : null
+    // A multipart body carries its own boundary, so setting the JSON content type
+    // would make the API reject the upload.
+    if (body !== undefined && !formData) headers["Content-Type"] = "application/json"
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    if (auth && !token) {
+      throw new ApiError(translate("You are signed out. Sign in to the JSSG API to perform this action."), 401)
+    }
+
+    let response: Response
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        headers,
+        signal,
+        body: formData ?? (body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body)),
+      })
+    } catch {
+      throw new ApiError(translate("Could not reach the JSSG API. Check your connection and try again."), 0)
+    }
+
+    const raw = await response.text()
+    let payload: unknown = null
+    if (raw) {
+      try {
+        payload = JSON.parse(raw)
+      } catch {
+        payload = raw
       }
     }
-    const defaultMsg = getDefaultStatusMessage(response.status)
-    const specificMessage = extractMessage(payload, defaultMsg)
-    const errorCode =
-      payload &&
-      typeof payload === "object" &&
-      typeof (payload as Record<string, unknown>).error_code === "string"
-        ? ((payload as Record<string, unknown>).error_code as string)
-        : null
 
-    throw new ApiError(specificMessage, response.status, specificMessage, errorCode)
+    if (!response.ok) {
+      // Only an authenticated request whose token is still the current one can expire the
+      // session. Concurrent 401s share that token, so clearing it once makes the rest no-ops.
+      if (response.status === 401 && token && getStoredToken() === token) {
+        setStoredToken(null)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT))
+        }
+      }
+      const defaultMsg = getDefaultStatusMessage(response.status)
+      const specificMessage = extractMessage(payload, defaultMsg)
+      const errorCode =
+        payload &&
+        typeof payload === "object" &&
+        typeof (payload as Record<string, unknown>).error_code === "string"
+          ? ((payload as Record<string, unknown>).error_code as string)
+          : null
+
+      throw new ApiError(specificMessage, response.status, specificMessage, errorCode)
+    }
+
+    if (payload && typeof payload === "object" && (payload as ApiEnvelope<unknown>).success === false) {
+      const envelope = payload as ApiEnvelope<unknown>
+      throw new ApiError(envelope.message || translate("The API reported a failure."), response.status)
+    }
+
+    if (isGet && !skipCache) {
+      memoryCache.set(cacheKey, payload)
+    } else if (!isGet) {
+      // Invalidate relevant cache on mutations (POST, PUT, PATCH, DELETE)
+      const rootSegment = path.replace(/^\/+/, "").split(/[/?]/)[0]
+      if (rootSegment) {
+        memoryCache.invalidate(rootSegment)
+      }
+    }
+
+    return payload as T
   }
 
-  if (payload && typeof payload === "object" && (payload as ApiEnvelope<unknown>).success === false) {
-    const envelope = payload as ApiEnvelope<unknown>
-    throw new ApiError(envelope.message || translate("The API reported a failure."), response.status)
+  const promise = runRequest()
+
+  if (isGet && !skipCache) {
+    memoryCache.setInFlight(cacheKey, promise)
   }
 
-  return payload as T
+  return promise
 }
 
 export function unwrap<T>(payload: ApiEnvelope<T> | null | undefined): T {

@@ -52,7 +52,7 @@ export default function EventsPage() {
       () => listEvents({ page, pageSize: PAGE_SIZE, search: query, eventType, timeFrame }),
       [page, query, eventType, timeFrame]
     ),
-    version
+    [page, query, eventType, timeFrame, version]
   )
   const counts = useData(useCallback(() => getEventCounts(), []), version)
   const types = useData(useCallback(() => getEventTypes(), []), version)
