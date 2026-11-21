@@ -82,9 +82,9 @@ export default function PaymentReportsPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {(status.data ?? []).map((g) => (
-              <div key={g.groupId} className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-xs text-muted-foreground">{g.name}</span>
-                <StatusBadge status={g.status} />
+              <div key={g.groupId} className="flex items-center justify-between gap-2.5">
+                <span className="min-w-0 flex-1 line-clamp-2 text-xs text-muted-foreground break-words" title={g.name}>{g.name}</span>
+                <StatusBadge status={g.status} className="shrink-0" />
               </div>
             ))}
             {status.loading && <p className="text-sm text-muted-foreground">Loading…</p>}

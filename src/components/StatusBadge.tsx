@@ -72,12 +72,35 @@ const dotMap: Record<string, string> = {
   Custom: "bg-muted-foreground",
 }
 
-export function StatusBadge({ status, showDot = true }: { status: string; showDot?: boolean }) {
-  const key = status.toLowerCase()
+export function StatusBadge({
+  status,
+  showDot = true,
+  className,
+}: {
+  status: string
+  showDot?: boolean
+  className?: string
+}) {
+  const key = status ? status.toLowerCase() : ""
+  const displayStatus = (status || "").replaceAll("_", " ")
   return (
-    <Badge variant="outline" className={cn("gap-1.5 py-0.5 font-medium", toneMap[key] ?? "")}>
-      {showDot && <span className={cn("size-1.5 rounded-full", dotMap[key] ?? "bg-muted-foreground")} />}
-      <span className="capitalize">{status}</span>
+    <Badge
+      variant="outline"
+      className={cn(
+        "inline-flex items-center gap-1.5 py-0.5 px-2.5 font-medium shrink-0 whitespace-nowrap text-xs",
+        toneMap[key] ?? "",
+        className
+      )}
+    >
+      {showDot && (
+        <span
+          className={cn(
+            "size-1.5 rounded-full shrink-0",
+            dotMap[key] ?? "bg-muted-foreground"
+          )}
+        />
+      )}
+      <span className="capitalize">{displayStatus}</span>
     </Badge>
   )
 }

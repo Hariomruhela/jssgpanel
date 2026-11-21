@@ -240,7 +240,7 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardHeader className="h-16 bg-muted/30" />
+              <CardHeader className="h-20 bg-muted/30" />
               <CardContent className="h-28 py-3" />
             </Card>
           ))}
@@ -277,17 +277,20 @@ function GroupStatusTab({ onLedgerUpdated }: { onLedgerUpdated: () => void }) {
             return (
               <Card key={group.id} className="flex flex-col justify-between overflow-hidden shadow-xs hover:border-primary/40 transition-colors">
                 <CardHeader className="p-3.5 pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <CardTitle className="truncate font-semibold text-sm sm:text-base" title={group.group_name}>
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle
+                        className="font-semibold text-sm sm:text-base leading-snug line-clamp-2 min-h-[2.5rem] sm:min-h-[2.75rem] break-words"
+                        title={group.group_name}
+                      >
                         {group.group_name}
                       </CardTitle>
-                      <CardDescription className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+                      <CardDescription className="flex items-center gap-1.5 pt-1 text-[11px]">
                         <CalendarClock className="size-3 text-primary shrink-0" />
                         <span>Due: {formatDate(group.due_date || "2027-03-31")}</span>
                       </CardDescription>
                     </div>
-                    <StatusBadge status={group.status} />
+                    <StatusBadge status={group.status} className="shrink-0" />
                   </div>
                 </CardHeader>
 
@@ -854,7 +857,7 @@ function GroupReportsTab() {
                       </TableCell>
                       <TableCell className="font-medium text-foreground">
                         <div className="leading-tight">
-                          <p className="font-semibold text-xs sm:text-sm">{g.group_name}</p>
+                          <p className="font-semibold text-xs sm:text-sm line-clamp-2 max-w-xs break-words" title={g.group_name}>{g.group_name}</p>
                           <p className="text-[10px] text-muted-foreground">Due: {formatDate(g.due_date || "2027-03-31")}</p>
                         </div>
                       </TableCell>
