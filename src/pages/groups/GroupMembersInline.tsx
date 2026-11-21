@@ -78,7 +78,10 @@ export function GroupMembersInline({
     const { members, total } = await getMembers({ groupName: groupName ?? "", pageSize: 100 })
     return { members: members.map(fromMember), total }
   }, [groupId, groupName])
-  const data = useData(load, reloadKey)
+  const cacheKey = groupId
+    ? `group-members:${groupId}:${reloadKey}`
+    : `group-members:name:${groupName ?? ""}:${reloadKey}`
+  const data = useData(load, [groupId, groupName, reloadKey], { key: cacheKey })
   const list = data.data?.members ?? []
   const total = data.data?.total ?? list.length
 

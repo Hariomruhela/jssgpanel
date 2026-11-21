@@ -951,31 +951,50 @@ function TransactionsTab() {
 
   const payments = useData(
     useCallback(
-      () => listPayments({ memberId: memberId || undefined, page, pageSize: TRANSACTIONS_PAGE_SIZE }),
+      () => listPayments({ memberId: memberId || undefined, groupOnly: true, page, pageSize: TRANSACTIONS_PAGE_SIZE }),
       [memberId, page]
     ),
     [memberId, page]
   )
 
+  const [searchTerm, setSearchTerm] = useState("")
   const rows = payments.data?.payments ?? []
   const memberFiltered = Boolean(memberId)
   const hasNextPage = memberFiltered ? rows.length === TRANSACTIONS_PAGE_SIZE : undefined
 
+  const displayedRows = useMemo(() => {
+    // Only show group transactions
+    const groupOnlyRows = rows.filter(
+      (r) => r.workflow !== "MEMBER_CONTRIBUTION" && Boolean(r.group_name || r.group_id)
+    )
+    if (!searchTerm || UUID_PATTERN.test(searchTerm)) return groupOnlyRows
+    const q = searchTerm.toLowerCase()
+    return groupOnlyRows.filter(
+      (r) =>
+        r.group_name?.toLowerCase().includes(q) ||
+        r.provider_reference?.toLowerCase().includes(q) ||
+        r.order_id?.toLowerCase().includes(q) ||
+        r.id?.toLowerCase().includes(q)
+    )
+  }, [rows, searchTerm])
+
   const handleSearchChange = useCallback((value: string) => {
     const trimmed = value.trim()
+    setSearchTerm(trimmed)
     if (!trimmed) {
       setMemberError(null)
       setMemberId("")
       setPage(1)
       return
     }
-    if (!UUID_PATTERN.test(trimmed)) {
-      setMemberError("Enter a complete member ID (UUID) to filter payments.")
-      return
+    if (UUID_PATTERN.test(trimmed)) {
+      setMemberError(null)
+      setMemberId(trimmed)
+      setPage(1)
+    } else {
+      setMemberError(null)
+      setMemberId("")
     }
-    setMemberError(null)
-    setMemberId(trimmed)
-    setPage(1)
   }, [])
 
   const openDetails = useCallback(async (payment: PaymentRecord) => {
@@ -1004,31 +1023,53 @@ function TransactionsTab() {
 
   const columns: Column<PaymentRecord>[] = [
     {
-      id: "payment",
-      header: "Payment",
-      cell: (payment) => (
-        <div className="leading-tight">
-          <p className="font-medium">{shortId(payment.id)}</p>
-          <p className="text-xs text-muted-foreground">Order {shortId(payment.order_id)}</p>
-        </div>
-      ),
+      id: "group_name",
+      header: "Group Name",
+      cell: (payment) => {
+        const txnId = payment.provider_reference || shortId(payment.id)
+        return (
+          <div className="leading-tight">
+            <p className="font-medium">{payment.group_name || "—"}</p>
+            <p className="text-xs text-muted-foreground font-mono" title={payment.provider_reference || payment.id}>
+              Txn: {txnId}
+            </p>
+          </div>
+        )
+      },
     },
-    { id: "member", header: "Member", cell: (payment) => <span className="font-mono text-xs">{shortId(payment.member_id)}</span> },
-    { id: "fee", header: "Fee / Group", cell: (payment) => <span className="font-mono text-xs">{shortId(payment.fee_id)}</span> },
-    { id: "amount", header: "Amount", cell: (payment) => <span className="font-medium">{formatAmount(payment.amount)}</span> },
-    { id: "status", header: "Status", cell: (payment) => <StatusBadge status={payment.status} /> },
     {
-      id: "provider",
-      header: "Provider",
+      id: "members",
+      header: "Total Members",
       cell: (payment) => (
-        <div className="leading-tight">
-          <p className="capitalize">{payment.provider || "—"}</p>
-          <p className="max-w-36 truncate text-xs text-muted-foreground">{payment.provider_reference ?? "—"}</p>
-        </div>
+        <span className="font-medium tabular-nums">
+          {payment.total_members != null ? payment.total_members : "—"}
+        </span>
       ),
     },
-    { id: "created", header: "Created", cell: (payment) => formatDateTime(payment.created_at) },
-    { id: "paid", header: "Paid on", cell: (payment) => (payment.paid_at ? formatDateTime(payment.paid_at) : "—") },
+    {
+      id: "total_amount",
+      header: "Total Amount",
+      cell: (payment) => (
+        <span className="font-medium">
+          {payment.total_amount != null ? formatAmount(payment.total_amount) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      cell: (payment) => <span className="font-medium">{formatAmount(payment.amount)}</span>,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (payment) => <StatusBadge status={payment.status} />,
+    },
+    {
+      id: "paid",
+      header: "Paid on",
+      cell: (payment) => (payment.paid_at ? formatDateTime(payment.paid_at) : "—"),
+    },
     {
       id: "actions",
       header: "",
@@ -1058,11 +1099,11 @@ function TransactionsTab() {
       )}
       <DataTable
         columns={columns}
-        data={rows}
+        data={displayedRows}
         loading={payments.loading}
         rowKey={(payment) => payment.id}
         onSearchChange={handleSearchChange}
-        searchPlaceholder="Filter by member ID (UUID)…"
+        searchPlaceholder="Filter by member ID or group name…"
         toolbar={
           <Button variant="outline" size="sm" onClick={payments.reload} disabled={payments.loading}>
             <RefreshCw className={payments.loading ? "animate-spin" : ""} />
@@ -1125,6 +1166,9 @@ function PaymentDetailsDialog({
         {payment && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DetailItem label="Group Name" value={payment.group_name || "—"} />
+              <DetailItem label="Total Members" value={payment.total_members != null ? payment.total_members : "—"} />
+              <DetailItem label="Total Amount" value={payment.total_amount != null ? formatAmount(payment.total_amount) : "—"} />
               <DetailItem label="Amount" value={formatAmount(payment.amount)} />
               <DetailItem label="Status" value={<StatusBadge status={payment.status} />} />
               <DetailItem label="Provider" value={payment.provider || "—"} />

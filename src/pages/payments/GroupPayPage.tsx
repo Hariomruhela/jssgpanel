@@ -43,7 +43,9 @@ export default function GroupPayPage() {
     useCallback(() => {
       if (!groupId) throw new Error("Group ID is required")
       return getGroupObligationDetail(groupId)
-    }, [groupId])
+    }, [groupId]),
+    groupId,
+    { key: `group-obligation-detail:${groupId}` }
   )
 
   const group: GroupObligationRecord | undefined = detailData.data?.obligation
@@ -173,6 +175,7 @@ export default function GroupPayPage() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             })
+            toast.dismiss("checkout-verify")
             triggerPaymentNotification({
               category: "group_payment",
               title: "Group Payment Received",
@@ -180,10 +183,8 @@ export default function GroupPayPage() {
               amount: order.amount,
               groupName: order.group_name || group?.group_name,
               transactionId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
               link: `/admin/payments/pay/${groupId}`,
-            })
-            toast.success(`Payment of ${formatCurrency(order.amount)} verified successfully!`, {
-              id: "checkout-verify",
             })
             setLastPaymentAmount(order.amount)
             setPaymentSuccess(true)

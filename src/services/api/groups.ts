@@ -10,6 +10,7 @@ export interface GroupListParams {
   query?: string
   /** `SocialGroup.status`, e.g. `ACTIVE`. Ignored by the API while `query` is set. */
   status?: string
+  skipCache?: boolean
 }
 
 export interface GroupListResult {
@@ -44,6 +45,7 @@ export async function listGroups(params: GroupListParams = {}): Promise<GroupLis
 
   const payload = await apiRequest<ApiEnvelope<GroupRecord[]>>(`${BASE}?${search.toString()}`, {
     auth: true,
+    skipCache: params.skipCache,
   })
   const groups = unwrapList<GroupRecord>(payload)
   const pagination = payload?.pagination
@@ -61,19 +63,20 @@ export async function listGroups(params: GroupListParams = {}): Promise<GroupLis
  * Every stored group (the API caps a page at 100). This is what every group
  * dropdown in the panel loads, so a new group shows up as soon as it is created.
  */
-export async function getGroups(): Promise<GroupRecord[]> {
+export async function getGroups(skipCache = false): Promise<GroupRecord[]> {
   const payload = await apiRequest<ApiEnvelope<GroupRecord[]>>(`${BASE}?page_size=100`, {
     auth: true,
+    skipCache,
   })
   return unwrapList<GroupRecord>(payload)
 }
 
 /** Every stored group, page by page, so the directory is not capped at 100. */
-export async function getAllGroups(): Promise<GroupRecord[]> {
-  const first = await listGroups({ page: 1, pageSize: 100 })
+export async function getAllGroups(skipCache = false): Promise<GroupRecord[]> {
+  const first = await listGroups({ page: 1, pageSize: 100, skipCache })
   const groups = [...first.groups]
   for (let page = 2; page <= first.totalPages; page += 1) {
-    const next = await listGroups({ page, pageSize: 100 })
+    const next = await listGroups({ page, pageSize: 100, skipCache })
     groups.push(...next.groups)
   }
   return groups
@@ -104,8 +107,9 @@ export async function updateGroup(id: string, input: Partial<GroupInput>): Promi
   return unwrapItem<GroupRecord>(payload)
 }
 
-export async function removeGroup(id: string): Promise<void> {
-  await apiRequest(`${BASE}/${id}`, { method: "DELETE", auth: true })
+export async function removeGroup(id: string, force = true): Promise<void> {
+  const query = force ? "?force=true" : ""
+  await apiRequest(`${BASE}/${id}${query}`, { method: "DELETE", auth: true })
 }
 
 interface MediaRecord {

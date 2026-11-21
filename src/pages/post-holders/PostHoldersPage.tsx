@@ -193,7 +193,9 @@ export default function PostHoldersPage() {
               totalPages: 1,
             }),
       [dialog.open, form.groupId]
-    )
+    ),
+    [dialog.open, form.groupId],
+    { key: `post-holders-group-members:${dialog.open}:${form.groupId}` }
   )
 
   const refresh = () => setVersion((v) => v + 1)

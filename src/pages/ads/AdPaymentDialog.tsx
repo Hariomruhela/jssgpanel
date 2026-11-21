@@ -89,13 +89,14 @@ export function AdPaymentDialog({ open, ad, onOpenChange, onPaid }: AdPaymentDia
                 razorpay_signature: response.razorpay_signature,
               })
               toast.dismiss()
-              toast.success("Payment verified and advertisement activated!")
               triggerPaymentNotification({
+                id: verified.id,
                 category: "ad_payment",
                 title: "Ad Payment Received",
                 message: `Payment of ${formatCurrency(amountVal)} received for advertisement: "${ad.title}"`,
                 amount: amountVal,
                 transactionId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
                 link: "/admin/advertisements",
               })
               onPaid(verified)
@@ -127,6 +128,7 @@ export function AdPaymentDialog({ open, ad, onOpenChange, onPaid }: AdPaymentDia
           notes: "Offline advertisement payment",
         })
         triggerPaymentNotification({
+          id: updated.id,
           category: "ad_payment",
           title: "Ad Payment Received",
           message: `Payment of ${formatCurrency(amountVal)} received for advertisement: "${ad.title}" (${offlineMethod})`,
@@ -134,7 +136,6 @@ export function AdPaymentDialog({ open, ad, onOpenChange, onPaid }: AdPaymentDia
           transactionId: offlineTxnId.trim() || undefined,
           link: "/admin/advertisements",
         })
-        toast.success("Offline payment recorded successfully!")
         onPaid(updated)
         onOpenChange(false)
         return

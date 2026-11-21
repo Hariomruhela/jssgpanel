@@ -1,10 +1,20 @@
 import { useRef } from "react"
-import { Printer, X, Building, ShieldCheck, Heart } from "lucide-react"
+import { Printer, X, Heart, ShieldCheck } from "lucide-react"
 import type { ContributionRecord } from "@/types"
 
 interface ContributionReceiptModalProps {
   contribution: ContributionRecord | null
   onClose: () => void
+}
+
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return ""
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
 }
 
 function convertNumberToWords(num: number): string {
@@ -45,6 +55,536 @@ function convertNumberToWords(num: number): string {
   return words.trim() + " Rupees Only"
 }
 
+const RECEIPT_STYLES = `
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+  }
+  .rc-voucher-root {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .rc-voucher {
+    width: 100%;
+    max-width: 680px;
+    background: #ffffff;
+    border: 2px solid #047857;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+    text-align: left;
+  }
+  .rc-top-stripe {
+    height: 6px;
+    background: linear-gradient(90deg, #047857 0%, #059669 65%, #d97706 100%);
+    width: 100%;
+  }
+  .rc-body {
+    padding: 22px 26px;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .rc-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-25deg);
+    font-size: 56px;
+    font-weight: 900;
+    color: rgba(4, 120, 87, 0.035);
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    z-index: 0;
+    font-family: inherit;
+  }
+  .rc-header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #047857;
+  }
+  .rc-logo-col {
+    width: 58px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rc-logo-img {
+    max-height: 58px;
+    max-width: 58px;
+    object-fit: contain;
+  }
+  .rc-hand-col {
+    width: 50px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rc-hand-img {
+    max-height: 50px;
+    max-width: 44px;
+    object-fit: contain;
+    opacity: 0.9;
+  }
+  .rc-title-col {
+    flex: 1;
+    text-align: center;
+  }
+  .rc-org-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #065f46;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.25;
+    margin: 0 0 2px 0;
+  }
+  .rc-org-hindi {
+    font-size: 13px;
+    font-weight: 600;
+    color: #047857;
+    margin: 0 0 2px 0;
+  }
+  .rc-org-tagline {
+    font-size: 10.5px;
+    color: #64748b;
+    font-weight: 500;
+    margin: 0;
+  }
+  .rc-badge-row {
+    text-align: center;
+    margin-top: 12px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+  }
+  .rc-badge-pill {
+    display: inline-block;
+    background: #047857;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3.5px 18px;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .rc-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+  }
+  .rc-meta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .rc-meta-label {
+    color: #64748b;
+    font-weight: 500;
+  }
+  .rc-meta-value {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .rc-meta-value.highlight {
+    color: #047857;
+  }
+  .rc-meta-value.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+  }
+  .rc-badge-mode {
+    background: #dcfce7;
+    color: #15803d;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    border: 1px solid #bbf7d0;
+  }
+  .rc-details-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    background: #ffffff;
+    position: relative;
+    z-index: 1;
+  }
+  .rc-details-heading {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #047857;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+  }
+  .rc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .rc-table tr {
+    border-bottom: 1px dashed #f1f5f9;
+  }
+  .rc-table tr:last-child {
+    border-bottom: none;
+  }
+  .rc-table td {
+    padding: 5px 0;
+    vertical-align: top;
+  }
+  .rc-td-key {
+    width: 175px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .rc-td-sep {
+    width: 14px;
+    color: #94a3b8;
+    font-weight: bold;
+  }
+  .rc-td-val {
+    color: #1e293b;
+    font-weight: 600;
+  }
+  .rc-donor-name {
+    font-size: 14px;
+    font-weight: 750;
+    color: #0f172a;
+  }
+  .rc-group-val {
+    color: #047857;
+    font-weight: 700;
+  }
+  .rc-notes-val {
+    font-style: italic;
+    color: #475569;
+    font-weight: normal;
+  }
+  .rc-amount-card {
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 1.5px solid #059669;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .rc-amount-left {
+    flex: 1;
+    padding-right: 12px;
+  }
+  .rc-amount-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #047857;
+    margin-bottom: 2px;
+  }
+  .rc-amount-words {
+    font-size: 12px;
+    font-weight: 600;
+    color: #065f46;
+    font-style: italic;
+  }
+  .rc-amount-num {
+    font-size: 22px;
+    font-weight: 800;
+    color: #065f46;
+    white-space: nowrap;
+  }
+  .rc-footer-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    position: relative;
+    z-index: 1;
+  }
+  .rc-auth-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .rc-auth-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #047857;
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .rc-auth-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .rc-disclaimer {
+    font-size: 9.5px;
+    color: #64748b;
+    line-height: 1.4;
+    margin: 0;
+  }
+  .rc-sign-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: flex-end;
+  }
+  .rc-for-org {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+  }
+  .rc-seal-circle {
+    width: 58px;
+    height: 58px;
+    border: 1.5px dashed #059669;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4, 120, 87, 0.03);
+    margin: 2px 0 4px 0;
+  }
+  .rc-seal-star {
+    font-size: 6px;
+    color: #d97706;
+    line-height: 1;
+  }
+  .rc-seal-text {
+    font-size: 6.5px;
+    font-weight: 800;
+    color: #047857;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-align: center;
+  }
+  .rc-sign-line {
+    width: 150px;
+    border-top: 1px dashed #94a3b8;
+    padding-top: 3px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #334155;
+  }
+  @media print {
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+    }
+    .rc-voucher {
+      max-width: 100% !important;
+      width: 100% !important;
+      box-shadow: none !important;
+      border: 2px solid #047857 !important;
+      border-radius: 4px !important;
+      page-break-inside: avoid !important;
+    }
+  }
+`
+
+function generateReceiptHtml(
+  contribution: ContributionRecord,
+  formattedDate: string,
+  amountInWords: string,
+  logoUrl: string,
+  handIconUrl: string
+): string {
+  const receiptNo =
+    contribution.receipt_no ||
+    contribution.order_id ||
+    (contribution.id ? `REC-${contribution.id.substring(0, 8).toUpperCase()}` : "REC-JSSG-001")
+
+  const donorName =
+    contribution.member_name ||
+    contribution.donor_name ||
+    "Respected Community Contributor"
+
+  return `
+    <div class="rc-voucher-root">
+      <div class="rc-voucher">
+        <div class="rc-top-stripe"></div>
+        <div class="rc-body">
+          <div class="rc-watermark">JSSG FEDERATION</div>
+
+          <!-- Letterhead Header -->
+          <div class="rc-header">
+            <div class="rc-logo-col">
+              <img src="${logoUrl}" alt="JSSG Logo" class="rc-logo-img" onerror="this.style.display='none'" />
+            </div>
+            <div class="rc-title-col">
+              <h1 class="rc-org-title">Jain Shwetamber Social Groups Federation</h1>
+              <div class="rc-org-hindi">जैन श्वेतांबर सोशल ग्रुप्स फेडरेशन</div>
+              <p class="rc-org-tagline">Apex Body of Jain Social Groups | Registered Non-Profit Federation</p>
+            </div>
+            <div class="rc-hand-col">
+              <img src="${handIconUrl}" alt="Ahimsa" class="rc-hand-img" onerror="this.style.display='none'" />
+            </div>
+          </div>
+
+          <!-- Receipt Badge -->
+          <div class="rc-badge-row">
+            <span class="rc-badge-pill">Contribution Acknowledgement Receipt</span>
+          </div>
+
+          <!-- Receipt & Transaction Meta -->
+          <div class="rc-meta-grid">
+            <div class="rc-meta-item">
+              <span class="rc-meta-label">Receipt No:</span>
+              <span class="rc-meta-value highlight mono">${escapeHtml(receiptNo)}</span>
+            </div>
+            <div class="rc-meta-item">
+              <span class="rc-meta-label">Date &amp; Time:</span>
+              <span class="rc-meta-value">${escapeHtml(formattedDate)}</span>
+            </div>
+            <div class="rc-meta-item">
+              <span class="rc-meta-label">Transaction ID:</span>
+              <span class="rc-meta-value mono">${escapeHtml(contribution.transaction_id || "N/A")}</span>
+            </div>
+            <div class="rc-meta-item">
+              <span class="rc-meta-label">Payment Mode:</span>
+              <span class="rc-meta-value">
+                <span class="rc-badge-mode">${escapeHtml(contribution.payment_method || "ONLINE")}</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Contributor Details Table -->
+          <div class="rc-details-box">
+            <div class="rc-details-heading">Donor &amp; Contribution Details</div>
+            <table class="rc-table">
+              <tbody>
+                <tr>
+                  <td class="rc-td-key">Received with thanks from</td>
+                  <td class="rc-td-sep">:</td>
+                  <td class="rc-td-val rc-donor-name">${escapeHtml(donorName)}</td>
+                </tr>
+                ${
+                  contribution.donor_phone
+                    ? `<tr>
+                        <td class="rc-td-key">Contact / Mobile</td>
+                        <td class="rc-td-sep">:</td>
+                        <td class="rc-td-val">${escapeHtml(contribution.donor_phone)}</td>
+                      </tr>`
+                    : ""
+                }
+                <tr>
+                  <td class="rc-td-key">Social Group</td>
+                  <td class="rc-td-sep">:</td>
+                  <td class="rc-td-val rc-group-val">${escapeHtml(contribution.group_name || "JSSG Federation General")}</td>
+                </tr>
+                <tr>
+                  <td class="rc-td-key">Contribution Purpose</td>
+                  <td class="rc-td-sep">:</td>
+                  <td class="rc-td-val">${escapeHtml(contribution.purpose || "Federation Contribution")}</td>
+                </tr>
+                ${
+                  contribution.notes
+                    ? `<tr>
+                        <td class="rc-td-key">Remarks / Notes</td>
+                        <td class="rc-td-sep">:</td>
+                        <td class="rc-td-val rc-notes-val">${escapeHtml(contribution.notes)}</td>
+                      </tr>`
+                    : ""
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Amount Highlight Box -->
+          <div class="rc-amount-card">
+            <div class="rc-amount-left">
+              <div class="rc-amount-lbl">Total Amount Received</div>
+              <div class="rc-amount-words">${escapeHtml(amountInWords)}</div>
+            </div>
+            <div class="rc-amount-num">&#8377; ${Number(contribution.amount).toLocaleString("en-IN")}/-</div>
+          </div>
+
+          <!-- Footer & Authentication -->
+          <div class="rc-footer-row">
+            <div class="rc-auth-left">
+              <div class="rc-auth-pill">
+                <svg class="rc-auth-icon" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                <span>Verified &amp; Authenticated</span>
+              </div>
+              <p class="rc-disclaimer">
+                Thank you for your noble support towards Jain Shwetamber Social Groups Federation initiatives.
+                This is an official computer-generated receipt issued by the Federation and valid without physical signature.
+              </p>
+            </div>
+
+            <div class="rc-sign-right">
+              <div class="rc-for-org">For JSSG FEDERATION</div>
+              <div class="rc-seal-circle">
+                <span class="rc-seal-star">&#9733; &#9733; &#9733;</span>
+                <span class="rc-seal-text">OFFICIAL<br/>DIGITAL SEAL</span>
+                <span class="rc-seal-star">&#9733; JSSG &#9733;</span>
+              </div>
+              <div class="rc-sign-line">Authorized Signatory</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `
+}
+
 export function ContributionReceiptModal({
   contribution,
   onClose,
@@ -53,200 +593,16 @@ export function ContributionReceiptModal({
 
   if (!contribution) return null
 
-  const handlePrint = () => {
-    if (!receiptRef.current) return
-    const content = receiptRef.current.innerHTML
-    const printWindow = window.open("", "_blank", "width=850,height=900")
-    if (!printWindow) {
-      window.print()
-      return
-    }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt_${contribution.receipt_no || contribution.id}</title>
-          <meta charset="utf-8" />
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 15mm;
-            }
-            body {
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              color: #111827;
-              margin: 0;
-              padding: 10px;
-              background: #fff;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .print-container {
-              max-width: 750px;
-              margin: 0 auto;
-              border: 2px solid #047857;
-              border-radius: 8px;
-              padding: 24px;
-              position: relative;
-            }
-            .watermark {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-25deg);
-              font-size: 80px;
-              font-weight: 900;
-              color: rgba(4, 120, 87, 0.05);
-              text-transform: uppercase;
-              pointer-events: none;
-              user-select: none;
-              white-space: nowrap;
-            }
-            .header {
-              text-align: center;
-              border-bottom: 2px solid #047857;
-              padding-bottom: 16px;
-              margin-bottom: 20px;
-            }
-            .title {
-              font-size: 22px;
-              font-weight: 800;
-              color: #065f46;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              margin: 0 0 4px 0;
-            }
-            .subtitle {
-              font-size: 13px;
-              color: #4b5563;
-              margin: 0 0 6px 0;
-            }
-            .receipt-badge {
-              display: inline-block;
-              background-color: #047857;
-              color: #ffffff;
-              font-size: 13px;
-              font-weight: 700;
-              padding: 4px 16px;
-              border-radius: 9999px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            }
-            .meta-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 12px;
-              margin-bottom: 20px;
-              padding: 12px;
-              background-color: #f9fafb;
-              border: 1px solid #e5e7eb;
-              border-radius: 6px;
-              font-size: 13px;
-            }
-            .meta-item {
-              display: flex;
-              justify-content: space-between;
-              padding: 3px 0;
-            }
-            .meta-label {
-              color: #6b7280;
-              font-weight: 500;
-            }
-            .meta-value {
-              font-weight: 700;
-              color: #111827;
-            }
-            .section-box {
-              border: 1px solid #e5e7eb;
-              border-radius: 6px;
-              padding: 16px;
-              margin-bottom: 20px;
-              background-color: #ffffff;
-            }
-            .row-item {
-              display: flex;
-              margin-bottom: 10px;
-              font-size: 14px;
-              line-height: 1.5;
-            }
-            .row-label {
-              width: 170px;
-              font-weight: 600;
-              color: #4b5563;
-            }
-            .row-value {
-              flex: 1;
-              color: #111827;
-              font-weight: 600;
-            }
-            .amount-box {
-              background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-              border: 2px dashed #059669;
-              border-radius: 8px;
-              padding: 16px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 20px;
-            }
-            .amount-number {
-              font-size: 26px;
-              font-weight: 800;
-              color: #065f46;
-            }
-            .amount-words {
-              font-size: 13px;
-              font-weight: 600;
-              color: #047857;
-              font-style: italic;
-              margin-top: 4px;
-            }
-            .footer-grid {
-              display: grid;
-              grid-template-columns: 1.5fr 1fr;
-              gap: 20px;
-              margin-top: 30px;
-              padding-top: 20px;
-              border-top: 1px solid #e5e7eb;
-            }
-            .note {
-              font-size: 11px;
-              color: #6b7280;
-              line-height: 1.4;
-            }
-            .sign-box {
-              text-align: center;
-            }
-            .sign-line {
-              border-top: 1px dashed #9ca3af;
-              margin-top: 45px;
-              padding-top: 6px;
-              font-size: 12px;
-              font-weight: 700;
-              color: #374151;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="print-container">
-            <div class="watermark">JSSG FEDERATION</div>
-            ${content}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
-  }
-
   const formattedDate = contribution.paid_at
     ? new Date(contribution.paid_at).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : contribution.created_at
+    ? new Date(contribution.created_at).toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -257,11 +613,51 @@ export function ContributionReceiptModal({
 
   const amountInWords = convertNumberToWords(contribution.amount)
 
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank", "width=850,height=900")
+    if (!printWindow) {
+      window.print()
+      return
+    }
+
+    const origin = window.location.origin
+    const logoUrl = `${origin}/jssg_logo.png`
+    const handIconUrl = `${origin}/hand_icon.png`
+    const receiptHtml = generateReceiptHtml(contribution, formattedDate, amountInWords, logoUrl, handIconUrl)
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <title>Receipt_${contribution.receipt_no || contribution.id}</title>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            ${RECEIPT_STYLES}
+          </style>
+        </head>
+        <body>
+          ${receiptHtml}
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+              setTimeout(function() { window.close(); }, 800);
+            };
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative flex max-h-[95vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-2xl overflow-hidden border border-emerald-200 dark:bg-slate-900 dark:border-slate-800">
+      <style>{RECEIPT_STYLES}</style>
+
+      <div className="relative flex max-h-[95vh] w-full max-w-3xl flex-col rounded-xl bg-slate-100 shadow-2xl overflow-hidden border border-slate-300 dark:bg-slate-900 dark:border-slate-800">
         {/* Top Action Bar */}
-        <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/60">
+        <div className="flex items-center justify-between border-b border-emerald-200/60 bg-white px-5 py-3 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-400">
             <Heart className="h-5 w-5 fill-emerald-600 text-emerald-600" />
             <h3 className="font-semibold text-sm">Official Contribution Receipt</h3>
@@ -269,190 +665,61 @@ export function ContributionReceiptModal({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
             >
               <Printer className="h-4 w-4" />
-              Print Receipt
+              Print / Save PDF
             </button>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:hover:bg-slate-800 dark:text-slate-400"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:hover:bg-slate-800 dark:text-slate-400 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Printable Voucher Body */}
-        <div className="overflow-y-auto p-6 text-slate-800 dark:text-slate-200">
+        {/* Scrollable Document Preview Body */}
+        <div className="overflow-y-auto p-4 sm:p-6 flex justify-center bg-slate-200/70 dark:bg-slate-950/80">
           <div
             ref={receiptRef}
-            className="rounded-lg border-2 border-emerald-700/80 bg-white p-6 shadow-xs relative print:border-none print:shadow-none dark:bg-slate-900"
-          >
-            {/* Header */}
-            <div className="text-center border-b-2 border-emerald-700 pb-4 mb-4">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Building className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
-                <h1 className="text-lg sm:text-xl font-extrabold text-emerald-900 tracking-wide uppercase dark:text-emerald-300">
-                  Jain Shwetamber Social Groups Federation
-                </h1>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Apex Body of Jain Social Groups | Registered Non-Profit Federation
-              </p>
-              <div className="mt-2.5">
-                <span className="inline-block rounded-full bg-emerald-700 px-4 py-1 text-xs font-bold text-white uppercase tracking-wider">
-                  Contribution Acknowledgement Receipt
-                </span>
-              </div>
-            </div>
-
-            {/* Receipt & Transaction Meta */}
-            <div className="grid grid-cols-2 gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-200/60 text-xs mb-4 dark:bg-slate-800/40 dark:border-slate-800">
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Receipt No:</span>
-                  <span className="font-bold text-emerald-800 dark:text-emerald-300">
-                    {contribution.receipt_no || `REC-${contribution.id.substring(0, 8).toUpperCase()}`}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Date & Time:</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    {formattedDate}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Transaction ID:</span>
-                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                    {contribution.transaction_id || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Payment Mode:</span>
-                  <span className="font-bold uppercase text-slate-700 dark:text-slate-300">
-                    {contribution.payment_method || "ONLINE"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Contributor & Group Info */}
-            <div className="rounded-lg border border-slate-200 p-4 mb-4 bg-slate-50/40 text-xs sm:text-sm space-y-2 dark:border-slate-800 dark:bg-slate-800/30">
-              <div className="flex flex-col sm:flex-row sm:items-center">
-                <span className="w-40 font-semibold text-slate-500 dark:text-slate-400">
-                  Received with thanks from:
-                </span>
-                <span className="font-bold text-slate-900 text-sm sm:text-base dark:text-slate-100">
-                  {contribution.member_name || contribution.donor_name || "Respected Community Contributor"}
-                </span>
-              </div>
-
-              {contribution.donor_phone && (
-                <div className="flex flex-col sm:flex-row sm:items-center">
-                  <span className="w-40 font-semibold text-slate-500 dark:text-slate-400">
-                    Contact / Mobile:
-                  </span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    {contribution.donor_phone}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row sm:items-center">
-                <span className="w-40 font-semibold text-slate-500 dark:text-slate-400">
-                  Social Group:
-                </span>
-                <span className="font-semibold text-emerald-800 dark:text-emerald-400">
-                  {contribution.group_name || "Federation General"}
-                </span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center">
-                <span className="w-40 font-semibold text-slate-500 dark:text-slate-400">
-                  Contribution Purpose:
-                </span>
-                <span className="font-medium text-slate-800 dark:text-slate-200">
-                  {contribution.purpose || "General Community Welfare"}
-                </span>
-              </div>
-
-              {contribution.notes && (
-                <div className="flex flex-col sm:flex-row sm:items-start">
-                  <span className="w-40 font-semibold text-slate-500 dark:text-slate-400">
-                    Remarks / Notes:
-                  </span>
-                  <span className="font-normal italic text-slate-600 dark:text-slate-300">
-                    {contribution.notes}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Highlighted Amount Box */}
-            <div className="rounded-lg border-2 border-dashed border-emerald-600 bg-emerald-50/70 p-4 mb-4 dark:bg-emerald-950/20 dark:border-emerald-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs uppercase font-bold tracking-wider text-emerald-800 dark:text-emerald-400">
-                    Total Amount Received:
-                  </span>
-                  <div className="text-xs italic font-medium text-emerald-700 mt-1 dark:text-emerald-300">
-                    {amountInWords}
-                  </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-emerald-900 dark:text-emerald-200">
-                  ₹{Number(contribution.amount).toLocaleString("en-IN")}
-                </div>
-              </div>
-            </div>
-
-            {/* Signature & Note Footer */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200 text-xs dark:border-slate-800">
-              <div className="space-y-1 text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-1 text-emerald-700 font-semibold dark:text-emerald-400">
-                  <ShieldCheck className="h-4 w-4" />
-                  <span>Verified & Authenticated</span>
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  Thank you for your noble support towards Jain Shwetamber Social Groups Federation initiatives.
-                  This is a computer-generated voucher valid without physical signature.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center justify-end text-center mt-4 sm:mt-0">
-                <div className="h-10 flex items-center justify-center">
-                  <span className="text-[11px] font-semibold text-slate-400 tracking-wider">
-                    [ JSSG FEDERATION ]
-                  </span>
-                </div>
-                <div className="w-44 border-t border-dashed border-slate-400 pt-1 font-bold text-slate-700 text-xs dark:text-slate-300">
-                  Authorized Signatory
-                </div>
-              </div>
-            </div>
-          </div>
+            className="w-full flex justify-center"
+            dangerouslySetInnerHTML={{
+              __html: generateReceiptHtml(
+                contribution,
+                formattedDate,
+                amountInWords,
+                "/jssg_logo.png",
+                "/hand_icon.png"
+              ),
+            }}
+          />
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-800/60">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
-          >
-            <Printer className="h-4 w-4" />
-            Print Receipt
-          </button>
+        <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            <span>Computer-generated valid receipt</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+            >
+              <Printer className="h-4 w-4" />
+              Print / Save PDF
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -84,6 +84,7 @@ export function AddContributionModal({ onClose, onSuccess }: AddContributionModa
       const res = await recordManualContribution(payload)
 
       triggerPaymentNotification({
+        id: res.id,
         category: "contribution",
         title: "Contribution Received",
         message: `Contribution of ₹${numAmount.toLocaleString("en-IN")} received from ${donorName.trim()} (${finalPurpose})`,

@@ -1012,11 +1012,16 @@ export interface PaymentTransactionRecord {
 export interface PaymentRecord {
   id: string
   member_id: string | null
+  group_id?: string | null
+  group_name?: string | null
+  total_members?: number | null
+  total_amount?: string | number | null
   fee_id: string | null
   order_id: string
   amount: string | number
   currency: string
   status: string
+  workflow?: string | null
   provider: string
   provider_reference: string | null
   paid_at: string | null
@@ -1028,6 +1033,7 @@ export interface PaymentRecord {
 
 export interface PaymentListParams {
   memberId?: string
+  groupOnly?: boolean
   page?: number
   pageSize?: number
 }

@@ -78,7 +78,8 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
           : Promise.resolve([] as GroupAdmin[]),
       [groupId]
     ),
-    version
+    [groupId, version],
+    { key: `group-admins:${groupId}:${version}` }
   )
 
   useEffect(() => {
@@ -89,7 +90,8 @@ export function GroupMembersDialog({ group, onOpenChange, onChanged }: GroupMemb
 
   const members = useData(
     useCallback(() => getGroupMembers(groupId, { pageSize: 100 }), [groupId]),
-    version
+    [groupId, version],
+    { key: `group-members:${groupId}:${version}` }
   )
   // The whole directory is listed, not only search hits: typing narrows it.
   const directory = useData(

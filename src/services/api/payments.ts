@@ -223,6 +223,7 @@ export async function listPayments(params: PaymentListParams = {}): Promise<Paym
     page_size: String(pageSize),
   })
   if (params.memberId) query.set("member_id", params.memberId)
+  if (params.groupOnly) query.set("group_only", "true")
 
   const payload = await apiRequest<ApiEnvelope<PaymentRecord[]>>(`${BASE}?${query.toString()}`, {
     auth: true,

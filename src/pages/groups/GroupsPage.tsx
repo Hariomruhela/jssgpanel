@@ -34,6 +34,7 @@ import { StatusBadge } from "@/components/StatusBadge"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { FormField } from "@/components/FormField"
 import { SearchableSelect } from "@/components/SearchableSelect"
+import { memoryCache } from "@/lib/cache"
 import { useData } from "@/lib/useData"
 import { initials } from "@/lib/format"
 import type { GroupInput, GroupRecord } from "@/types"
@@ -99,15 +100,23 @@ function normalizeGroupName(name: string): string {
 
 function GroupsPage() {
   const [version, setVersion] = useState(0)
+  const [localGroups, setLocalGroups] = useState<GroupRecord[] | null>(null)
 
   // Groups from the groups API only.
   const source = useData(
     useCallback(async (): Promise<{ groups: GroupRecord[]; memberNames: string[] }> => {
-      const groups = await getAllGroups()
+      const groups = await getAllGroups(true)
       return { groups, memberNames: [] }
     }, []),
     version
   )
+
+  useEffect(() => {
+    if (source.data?.groups) {
+      setLocalGroups(source.data.groups)
+    }
+  }, [source.data?.groups])
+
   const locations = useData(useCallback(() => getMemberLocations(), []))
 
   const [dialog, setDialog] = useState<{ open: boolean; editing: GroupRecord | null }>({
@@ -159,10 +168,15 @@ function GroupsPage() {
     !!form.state?.trim() &&
     (cities.loading || cities.data?.state !== form.state)
 
-  const refresh = () => setVersion((v) => v + 1)
+  const refresh = (skipCache = true) => {
+    if (skipCache) {
+      memoryCache.invalidate("groups")
+    }
+    setVersion((v) => v + 1)
+  }
 
   const directory = useMemo<DirectoryGroup[]>(() => {
-    const groups = source.data?.groups ?? []
+    const groups = localGroups ?? source.data?.groups ?? []
     const entries = new Map<string, DirectoryGroup>()
     // Stored groups first, so a managed group always wins over a member-derived
     // name that normalizes to the same thing.
@@ -181,7 +195,7 @@ function GroupsPage() {
       entries.set(key, { key: `member:${key}`, name, group: null, status: "ACTIVE" })
     }
     return [...entries.values()].sort((a, b) => a.name.localeCompare(b.name))
-  }, [source.data])
+  }, [localGroups, source.data])
 
   // Managed groups already carry `member_count` on the Group List response, so
   // only directory-only entries need a lookup (members whose free-text group
@@ -283,11 +297,12 @@ function GroupsPage() {
         : await createGroup(payload)
       toast.success(`${payload.name} ${dialog.editing ? "updated" : "created"}`)
 
+      let finalSaved = saved
       // The image needs the group's id, so it uploads after the row exists.
       if (imageFile) {
         try {
           const url = await uploadGroupImage(saved.id, imageFile)
-          await updateGroup(saved.id, { logo_url: url })
+          finalSaved = await updateGroup(saved.id, { logo_url: url })
         } catch (uploadError) {
           const detail = errorMessage(uploadError, "Could not upload the group image.")
           toast.error("Group saved, but the image failed to upload", {
@@ -296,8 +311,19 @@ function GroupsPage() {
         }
       }
 
+      // Optimistic update: immediately update local list and count
+      setLocalGroups((prev) => {
+        const list = prev ? [...prev] : (source.data?.groups ? [...source.data.groups] : [])
+        const idx = list.findIndex((g) => g.id === finalSaved.id)
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...finalSaved }
+          return list
+        }
+        return [finalSaved, ...list]
+      })
+
       clearImage()
-      refresh()
+      refresh(true)
       setDialog({ open: false, editing: null })
     } catch (error) {
       const { message, description } = errorMessage(error, "Could not save the group.")
@@ -391,20 +417,34 @@ function GroupsPage() {
     if (!deleting) return
     const entry = deleting
     setDeleting(null)
-    try {
-      if (entry.group) {
-        await removeGroup(entry.group.id)
+
+    // Optimistic delete: immediately remove from localGroups so count and table drop instantly
+    if (entry.group) {
+      const removedId = entry.group.id
+      const prevList = localGroups ?? source.data?.groups ?? []
+      setLocalGroups(prevList.filter((g) => g.id !== removedId))
+
+      try {
+        await removeGroup(removedId, true)
         toast.success(`${entry.name} removed`)
-      } else {
+        refresh(true)
+      } catch (error) {
+        // Rollback on failure
+        setLocalGroups(prevList)
+        const { message, description } = errorMessage(error, "Could not delete the group.")
+        toast.error(message, { description })
+      }
+    } else {
+      try {
         const cleared = await clearFreeTextGroup(entry.name)
         toast.success(
           `${entry.name} removed from ${cleared} member${cleared === 1 ? "" : "s"}`
         )
+        refresh(true)
+      } catch (error) {
+        const { message, description } = errorMessage(error, "Could not delete the group.")
+        toast.error(message, { description })
       }
-      refresh()
-    } catch (error) {
-      const { message, description } = errorMessage(error, "Could not delete the group.")
-      toast.error(message, { description })
     }
   }
 
@@ -551,7 +591,7 @@ function GroupsPage() {
             <div>
               <p className="text-xs text-muted-foreground">Total groups</p>
               <p className="font-heading text-xl font-semibold">
-                {source.data ? directory.length : "…"}
+                {localGroups !== null || source.data ? directory.length : "…"}
               </p>
             </div>
           </CardContent>
@@ -564,7 +604,7 @@ function GroupsPage() {
             <div>
               <p className="text-xs text-muted-foreground">Active groups</p>
               <p className="font-heading text-xl font-semibold">
-                {source.data ? activeCount : "…"}
+                {localGroups !== null || source.data ? activeCount : "…"}
               </p>
             </div>
           </CardContent>
@@ -575,7 +615,7 @@ function GroupsPage() {
         <Card size="sm" className="border-destructive/40">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
             <p className="text-sm text-destructive">{source.error.message}</p>
-            <Button size="sm" variant="outline" onClick={refresh}>
+            <Button size="sm" variant="outline" onClick={() => refresh(true)}>
               Retry
             </Button>
           </CardContent>
@@ -585,7 +625,7 @@ function GroupsPage() {
       <DataTable
         columns={columns}
         data={directory}
-        loading={source.loading}
+        loading={localGroups === null && source.loading}
         rowKey={(row) => row.key}
         searchKeys={(row) => `${row.name} ${row.group?.name_hi ?? ""}`}
         searchPlaceholder="Search group name…"

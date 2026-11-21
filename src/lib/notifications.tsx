@@ -17,6 +17,8 @@ const SEEN_IDS_KEY = "jssg_seen_payment_ids_v2"
 const MAX_NOTIFICATIONS = 100
 
 export type NewNotificationInput = {
+  id?: string | null
+  orderId?: string | null
   category: AppNotificationCategory
   title: string
   message: string
@@ -156,6 +158,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [soundEnabled, setSoundEnabled] = useState<boolean>(isNotificationSoundEnabled)
   const seenIdsRef = useRef<Set<string>>(getSeenIds())
   const isInitialSyncRef = useRef<boolean>(seenIdsRef.current.size === 0)
+  const recentAlertsRef = useRef<Map<string, number>>(new Map())
 
   // Keep localStorage updated when notifications change
   useEffect(() => {
@@ -215,20 +218,93 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [])
 
   const addNotification = useCallback((input: NewNotificationInput) => {
+    // Unique deduplication key for this notification event
+    const alertKey =
+      input.transactionId ||
+      input.receiptNo ||
+      input.id ||
+      input.orderId ||
+      `${input.category}:${input.title}:${input.amount || 0}:${input.message}`
+
+    // Deduplicate rapid triggers (within 5 seconds) to prevent multiple identical alerts
+    const now = Date.now()
+    const lastAlertTime = recentAlertsRef.current.get(alertKey)
+    if (lastAlertTime && now - lastAlertTime < 5000) {
+      return
+    }
+    recentAlertsRef.current.set(alertKey, now)
+
+    // Clean up memory if recentAlertsRef grows
+    if (recentAlertsRef.current.size > 200) {
+      for (const [k, time] of recentAlertsRef.current.entries()) {
+        if (now - time > 60000) {
+          recentAlertsRef.current.delete(k)
+        }
+      }
+    }
+
     // Lock IDs immediately to block duplicate polling
     if (input.transactionId) seenIdsRef.current.add(input.transactionId)
     if (input.receiptNo) seenIdsRef.current.add(input.receiptNo)
+    if (input.id) seenIdsRef.current.add(input.id)
+    if (input.orderId) seenIdsRef.current.add(input.orderId)
     saveSeenIds(seenIdsRef.current)
 
+    const notifId = `notif-${now}-${Math.random().toString(36).substring(2, 7)}`
+    const newItem: AppNotificationItem = {
+      id: notifId,
+      category: input.category,
+      title: input.title,
+      message: input.message,
+      amount: input.amount,
+      donorName: input.donorName,
+      groupName: input.groupName,
+      receiptNo: input.receiptNo,
+      transactionId: input.transactionId,
+      timestamp: new Date(now).toISOString(),
+      read: false,
+      link: input.link,
+    }
+
+    // --- SIDE EFFECTS EXECUTED OUTSIDE STATE UPDATER (Runs exactly once!) ---
+    // 1. Play soft audio chime
+    playNotificationChime()
+
+    // 2. Show Sonner Toast Alert with dedicated id to prevent stacking duplicates
+    const toastId = `toast-notif-${alertKey}`
+    const amountStr = input.amount ? ` • ${formatCurrency(input.amount)}` : ""
+    toast.success(`${input.title}${amountStr}`, {
+      id: toastId,
+      description: input.message,
+      action: input.link
+        ? {
+            label: "View",
+            onClick: () => {
+              if (input.link) window.location.href = input.link
+            },
+          }
+        : undefined,
+      duration: 6000,
+    })
+
+    // 3. Show Desktop Notification if permitted
+    showDesktopNotification(input.title, {
+      body: input.message,
+      onClick: () => {
+        if (input.link) window.location.href = input.link
+      },
+    })
+
+    // --- PURE STATE UPDATE ---
     setNotifications((prev) => {
-      // Check if duplicate already exists
+      // Check if duplicate already exists in state
       const isDuplicate = prev.some((n) => {
         if (input.transactionId && n.transactionId && input.transactionId === n.transactionId) return true
         if (input.receiptNo && n.receiptNo && input.receiptNo === n.receiptNo) return true
         if (
           input.amount &&
           n.amount === input.amount &&
-          Math.abs(Date.now() - new Date(n.timestamp).getTime()) < 180000 &&
+          Math.abs(now - new Date(n.timestamp).getTime()) < 180000 &&
           (n.category === input.category || n.message?.includes("via OFFLINE"))
         ) {
           return true
@@ -237,48 +313,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       })
 
       if (isDuplicate) return prev
-
-      const newItem: AppNotificationItem = {
-        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        category: input.category,
-        title: input.title,
-        message: input.message,
-        amount: input.amount,
-        donorName: input.donorName,
-        groupName: input.groupName,
-        receiptNo: input.receiptNo,
-        transactionId: input.transactionId,
-        timestamp: new Date().toISOString(),
-        read: false,
-        link: input.link,
-      }
-
-      // 1. Play soft audio chime
-      playNotificationChime()
-
-      // 2. Show Sonner Toast Alert
-      const amountStr = input.amount ? ` • ${formatCurrency(input.amount)}` : ""
-      toast.success(`${input.title}${amountStr}`, {
-        description: input.message,
-        action: input.link
-          ? {
-              label: "View",
-              onClick: () => {
-                if (input.link) window.location.href = input.link
-              },
-            }
-          : undefined,
-        duration: 6000,
-      })
-
-      // 3. Show Desktop Notification if permitted
-      showDesktopNotification(input.title, {
-        body: input.message,
-        onClick: () => {
-          if (input.link) window.location.href = input.link
-        },
-      })
-
       return [newItem, ...prev]
     })
   }, [])
@@ -309,12 +343,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // Track the ID to avoid duplicate alert if background polling fetches it later
         if (customEvent.detail.transactionId) {
           seenIdsRef.current.add(customEvent.detail.transactionId)
-          saveSeenIds(seenIdsRef.current)
         }
         if (customEvent.detail.receiptNo) {
           seenIdsRef.current.add(customEvent.detail.receiptNo)
-          saveSeenIds(seenIdsRef.current)
         }
+        if (customEvent.detail.id) {
+          seenIdsRef.current.add(customEvent.detail.id)
+        }
+        if (customEvent.detail.orderId) {
+          seenIdsRef.current.add(customEvent.detail.orderId)
+        }
+        saveSeenIds(seenIdsRef.current)
         addNotification(customEvent.detail)
       }
     }
@@ -350,6 +389,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             // Only trigger active notification if this isn't the initial page cold start
             if (!isFirstRun) {
               addNotification({
+                id: item.id,
+                orderId: item.order_id,
                 category: "contribution",
                 title: "Contribution Received",
                 message: `Contribution of ${formatCurrency(item.amount)} received from ${item.donor_name || item.member_name} (${item.purpose})`,
@@ -390,6 +431,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                   ? pay.amount
                   : parseFloat(String(pay.amount)) || 0
               addNotification({
+                id: pay.id,
+                orderId: pay.order_id,
                 category: "group_payment",
                 title: "Group Payment Received",
                 message: `Payment of ${formatCurrency(numAmount)} received via ${pay.provider || "Online"}`,
